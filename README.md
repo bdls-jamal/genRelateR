@@ -51,7 +51,7 @@ The author of the package is Kobi Jamal Schmalenberg.
 ## Acknowledgements
 
 This package was developed as part of an assessment for 2024 BCB410H:
-Applied Bioinformat- ics course at the University of Toronto, Toronto,
+Applied Bioinformatics course at the University of Toronto, Toronto,
 CANADA. `genRelateR` welcomes issues, enhancement requests, and other
 contributions. To submit an issue, use the [GitHub
 issues](https://github.com/bdls-jamal/genRelateR/issues).
