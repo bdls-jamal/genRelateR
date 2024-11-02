@@ -35,12 +35,21 @@ rungenRelateR() # not yet implemented
 ## Overview
 ``` r
 ls("package:genRelateR")
-data(package = "genRelateR") # optional
+data(package = "genRelateR")
 browseVignettes("genRelateR")
 ```
 
-`genRelateR` contains # functions.
+`genRelateR` contains 9 functions.
 
+1. ***loadGeneticData()*** loads and formats genetic data from various sources
+2. ***filterPopulation()*** filters data based on population, geographic region, or genetic criteria
+3. ***computeRelatedness()*** calculates genetic relatedness metrics between populations
+4. ***analyzePopulationStructure()*** performs PCA or admixture analysis on population data
+5. ***plotPopulationPca()*** plots population structure using PCA
+6. ***plotRelatednessHeatmap()*** visualizes genetic relatedness between populations using a heatmap
+7. ***plotAncestryMap()*** maps the distribution of genetic ancestry components
+8. ***plotMigrationPaths()*** visualize migration paths
+9. ***createRelatednessDashboard()*** generates an interactive shiny dashboard for exploring relatedness data
 
 Add overview image later:
 Refer to package vignettes for more details. An overview of the package is illustrated below.
