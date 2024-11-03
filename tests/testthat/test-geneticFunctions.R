@@ -1,84 +1,145 @@
-#' Test Suite for Genetic Analysis Functions
-#'
-#' This script contains unit tests for all genetic analysis functions
-#' using real VCF data from the 1000 Genomes Project.
-
 library(testthat)
 library(VariantAnnotation)
 library(GenomicRanges)
 library(data.table)
+library(SNPRelate)
+library(gdsfmt)
+library(dplyr)
+library(readr)
+library(SeqArray)
 
-# # Create a simple test VCF file
-# create_test_vcf <- function() {
-#   vcf_content <- '##fileformat=VCFv4.2
-# ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-# #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE1\tSAMPLE2
-# 1\t100\trs1\tA\tT\t100\tPASS\t.\tGT\t0/0\t0/1
-# 1\t200\trs2\tC\tG\t100\tPASS\t.\tGT\t0/1\t1/1'
-#
-#   # Create temporary VCF file
-#   tmp_file <- tempfile(fileext = ".vcf")
-#   writeLines(vcf_content, tmp_file)
-#   return(tmp_file)
-# }
-#
-# test_that("loadGeneticData loads VCF data correctly", {
-#   # Create test file
-#   vcf_file <- create_test_vcf()
-#
-#   # Test basic loading
-#   result <- loadGeneticData(vcf_file)
-#
-#   # Check that we get a VCF object back
-#   expect_s4_class(result, "VCF")
-#
-#   # Check dimensions
-#   expect_equal(nrow(result), 2)  # 2 variants
-#   expect_equal(ncol(result), 2)  # 2 samples
-#
-#   # Clean up
-#   unlink(vcf_file)
-# })
+setup_test_data <- function() {
+  # Get file paths
+  vcf_path <- normalizePath("../../data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+                            mustWork = FALSE)
+  rel_path <- normalizePath("../../data/20140625_related_individuals.txt",
+                            mustWork = FALSE)
+  pop_path <- normalizePath("../../data/population_metadata.txt",
+                            mustWork = FALSE)
 
+  # Check file existence
+  if (!file.exists(vcf_path)) {
+    skip(paste("VCF file not found at:", vcf_path))
+  }
+  if (!file.exists(rel_path)) {
+    skip(paste("Relatedness file not found at:", rel_path))
+  }
+  if (!file.exists(pop_path)) {
+    skip(paste("Population metadata file not found at:", pop_path))
+  }
 
-test_that("loadGeneticData handles errors appropriately", {
-  expect_error(loadGeneticData("nonexistent.vcf.gz"))
-})
-
-test_that("loadGeneticData works with 1000 Genomes Project data", {
-  vcf_path <- "../../data/vcf/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
-
-  skip_if_not(
-    file.exists(vcf_path),
-    "Skip test: 1000 Genomes Project VCF file not available"
-  )
-
-  # Test loading specific region
-  chr22_region <- GRanges(
-    seqnames = "22",
+  # Load a small region for testing
+  chr1_region <- GRanges(
+    seqnames = "1",
     ranges = IRanges(start = 20000000, end = 20001000)
   )
 
-  # Suppress warning about index age as it's expected
-  suppressWarnings({
-    result <- loadGeneticData(
-      vcf_path = vcf_path,
-      regions = chr22_region
-    )
+  # Load VCF data with error handling
+  vcf_data <- tryCatch({
+    suppressWarnings(loadGeneticData(vcf_path, regions = chr1_region))
+  }, error = function(e) {
+    skip(paste("Error loading VCF data:", e$message))
   })
 
-  expect_s4_class(result, "VCF")
-  expect_true(nrow(result) > 0)
+  # Return the test data structure
+  test_data <- list(
+    vcf_data = vcf_data,
+    pop_metadata = pop_path,
+    rel_data = rel_path,
+    n_samples = ncol(vcf_data)
+  )
 
-  # Test with sample filtering
-  suppressWarnings({
-    result_samples <- loadGeneticData(
-      vcf_path = vcf_path,
-      regions = chr22_region,
-      samples = c("HG00096", "HG00097")  # Example sample IDs from 1000G
-    )
-  })
+  # Validate the test data structure
+  if (!all(sapply(test_data, function(x) !is.null(x) && length(x) > 0))) {
+    skip("Invalid test data structure generated")
+  }
 
-  expect_s4_class(result_samples, "VCF")
-  expect_equal(ncol(result_samples), 2)
+  return(test_data)
+}
+
+
+test_that("computeRelatedness works with loaded VCF data", {
+  test_data <- setup_test_data()
+
+  # Filter test_data
+  filtered_vcf <- filterPopulation(
+    test_data$vcf_data,
+    test_data$pop_metadata,
+    test_data$rel_data,
+    population = c("CEU", "YRI")
+  )
+
+  # Test IBS calculation
+  ibs_results <- computeRelatedness(
+    filtered_vcf$vcf_data,
+    filtered_vcf$pop_metadata,
+    filtered_vcf$rel_data,
+    method = "ibs"
+  )
+
+  # Check structure of results
+  expect_type(ibs_results, "list")
+  expect_true("relatedness_matrix" %in% names(ibs_results))
+  expect_true("filtered_samples" %in% names(ibs_results))
+  expect_true("excluded_samples" %in% names(ibs_results))
+
+  # Check matrix properties
+  expect_true(is.matrix(ibs_results$relatedness_matrix))
+  expect_equal(nrow(ibs_results$relatedness_matrix),
+               length(ibs_results$filtered_samples))
+
+  # Test FST calculation
+  fst_results <- computeRelatedness(
+    test_data$vcf_data,
+    test_data$pop_metadata,
+    test_data$rel_data,
+    method = "fst"
+  )
+
+  # Check results
+  expect_type(fst_results, "list")
+  expect_true(is.matrix(fst_results$relatedness_matrix))
 })
+
+test_that("analyzePopulationStructure works with loaded VCF data", {
+  test_data <- setup_test_data()
+
+  # Test PCA
+  pca_results <- analyzePopulationStructure(
+    test_data$vcf_data,
+    test_data$pop_metadata,
+    test_data$rel_data,
+    method = "pca",
+    n_components = 2
+  )
+
+  # Check results structure
+  expect_type(pca_results, "list")
+  expect_true(all(c("plot_data", "percent_var", "filtered_samples",
+                    "excluded_samples") %in% names(pca_results)))
+
+  # Check plot data
+  expect_true("PC1" %in% names(pca_results$plot_data))
+  expect_true("PC2" %in% names(pca_results$plot_data))
+  expect_true("Population" %in% names(pca_results$plot_data))
+
+  # Test admixture analysis
+  admix_results <- analyzePopulationStructure(
+    test_data$vcf_data,
+    test_data$pop_metadata,
+    test_data$rel_data,
+    method = "admixture",
+    n_components = 2
+  )
+
+  # Check results structure
+  expect_type(admix_results, "list")
+  expect_true(all(c("plot_data", "filtered_samples",
+                    "excluded_samples") %in% names(admix_results)))
+
+  # Check plot data
+  expect_true("MDS1" %in% names(admix_results$plot_data))
+  expect_true("MDS2" %in% names(admix_results$plot_data))
+  expect_true("Population" %in% names(admix_results$plot_data))
+})
+

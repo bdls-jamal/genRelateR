@@ -25,33 +25,7 @@
 
 
 # Install the package if you haven't already
-source("R/setupPackages.R")
-
-# loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
-#   # Validate input file
-#   if (!file.exists(vcf_path)) {
-#     stop("VCF file does not exist: ", vcf_path)
-#   }
-#
-#   # Set up basic scanning parameters
-#   scan_params <- ScanVcfParam()
-#
-#   # Add region filtering if specified
-#   if (!is.null(regions)) {
-#     scan_params <- ScanVcfParam(which=regions)
-#   }
-#
-#   # Add sample filtering if specified
-#   if (!is.null(samples)) {
-#     scan_params <- ScanVcfParam(samples=samples)
-#   }
-#
-#   # Load the VCF file
-#   message("Loading VCF file...")
-#   vcf_data <- readVcf(vcf_path, genome="hg19", param=scan_params)
-#
-#   return(vcf_data)
-# }
+# Advise user to run setupPackages.R first
 
 loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
   # Validate input file
@@ -89,40 +63,90 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 
 #' Filter Population Data
 #'
-#' This function filters the genetic data based on population, geographic region, or genetic criteria.
+#' This function filters VCF data based on population metadata from the 1000 Genomes Project.
+#' Includes optional filtering of related individuals.
 #'
-#' @param genetic_data A data frame containing the genetic data to be filtered.
-#' @param population Optional; A string specifying the population to filter by.
-#' @param region Optional; A string specifying the geographic region to filter by.
-#' @param criteria Optional; A list of named vectors representing additional genetic criteria (e.g., SNP values).
-#' @return A filtered data frame.
+#' @param vcf_data A VCF object loaded using loadGeneticData
+#' @param pop_file Path to population metadata file (tab-delimited with columns: Sample, Population, SuperPop)
+#' @param rel_file Path to relationship metadata file (tab-delimited with columns: Sample, Population, Gender, Reason_for_exclusion)
+#' @param population Vector of population codes to include (e.g., c("CEU", "YRI"))
+#' @param super_pop Vector of super-population codes (e.g., c("EUR", "AFR"))
+#' @param remove_related Logical indicating whether to remove related individuals (default: FALSE)
+#' @param prioritize_gender Character indicating which gender to prioritize when removing related pairs ("male" or "female", default: NULL)
+#' @return Filtered VCF object
 #' @export
-#' @import dplyr
+#' @import VariantAnnotation dplyr readr stringr
+filterPopulation <- function(vcf_data, pop_file, rel_file, population = NULL,
+                             super_pop = NULL, prioritize_gender = NULL) {
+  # Load population metadata
+  pop_metadata <- read_tsv(pop_file, col_types = cols())
+  pop_metadata<- pop_metadata[, c(1, 2, 3, 4)]
 
-filterPopulation <- function(genetic_data, population = NULL, region = NULL, criteria = NULL) {
-  # Load necessary library
-  library(dplyr)  # for data manipulation
+  # Validate input
+  if (!is(vcf_data, "VCF")) {
+    stop("Input must be a VCF object")
+  }
 
-  # Start filtering the data
-  filtered_data <- genetic_data
+  # Get sample IDs from VCF
+  vcf_samples <- colnames(vcf_data)
 
-  # Filter by population
+  # Filter samples based on population criteria
+  selected_samples <- pop_metadata %>%
+    filter(sample %in% vcf_samples)
+
   if (!is.null(population)) {
-    filtered_data <- filtered_data %>% filter(Population == population)
+    selected_samples <- selected_samples %>%
+      filter(pop %in% population)
   }
 
-  # Filter by geographic region
-  if (!is.null(region)) {
-    filtered_data <- filtered_data %>% filter(GeographicRegion == region)
+  if (!is.null(super_pop)) {
+    selected_samples <- selected_samples %>%
+      filter(super_pop %in% super_pop)
   }
 
-  # Filter by additional criteria
-  if (!is.null(criteria)) {
-    for (criterion in names(criteria)) {
-      filtered_data <- filtered_data %>% filter(!!sym(criterion) %in% criteria[[criterion]])
+  # Handle relationship-based filtering if requested
+  if (!is.null(rel_file)) {
+    rel_metadata <- read_tsv(rel_file, col_types = cols())
+
+    # Extract related pairs
+    related_pairs <- rel_metadata %>%
+      mutate(
+        related_sample = str_extract("Reason for exclusion", "(?<=:)[^:]+$")
+      ) %>%
+      select(Sample, related_sample, Gender, Population)
+
+    # Determine which samples to remove based on relationships
+    samples_to_remove <- character(0)
+
+    if (!is.null(prioritize_gender)) {
+      # Prioritize keeping specific gender when possible
+      for (i in 1:nrow(related_pairs)) {
+        pair <- related_pairs[i,]
+        if (pair$Gender == prioritize_gender) {
+          samples_to_remove <- c(samples_to_remove, pair$related_sample)
+        } else {
+          samples_to_remove <- c(samples_to_remove, pair$Sample)
+        }
+      }
+    } else {
+      # If no gender preference, remove the first sample of each pair
+      samples_to_remove <- related_pairs$Sample
     }
+
+    # Remove related samples from selection
+    selected_samples <- selected_samples %>%
+      filter(!(sample %in% samples_to_remove))
   }
 
-  # Return the filtered data
-  return(filtered_data)
+  # Subset VCF to selected samples
+  filtered_vcf <- vcf_data[, selected_samples$sample]
+
+  # Add attributes about filtering
+  attr(filtered_vcf, "n_samples_removed") <- length(vcf_samples) - ncol(filtered_vcf)
+  attr(filtered_vcf, "populations_included") <- unique(selected_samples$pop)
+  if (exists("samples_to_remove")) {
+    attr(filtered_vcf, "related_samples_removed") <- samples_to_remove
+  }
+
+  return(list(vcf_data = filtered_vcf, pop_metadata = pop_metadata, rel_data = rel_metadata))
 }
