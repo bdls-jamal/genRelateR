@@ -6,7 +6,7 @@ library(SNPRelate)
 library(gdsfmt)
 library(dplyr)
 library(readr)
-library(SeqArray)
+library(stringr)
 
 setup_test_data <- function() {
   # Get file paths
@@ -90,9 +90,9 @@ test_that("computeRelatedness works with loaded VCF data", {
 
   # Test FST calculation
   fst_results <- computeRelatedness(
-    test_data$vcf_data,
-    test_data$pop_metadata,
-    test_data$rel_data,
+    filtered_vcf$vcf_data,
+    filtered_vcf$pop_metadata,
+    filtered_vcf$rel_data,
     method = "fst"
   )
 
@@ -104,11 +104,19 @@ test_that("computeRelatedness works with loaded VCF data", {
 test_that("analyzePopulationStructure works with loaded VCF data", {
   test_data <- setup_test_data()
 
-  # Test PCA
-  pca_results <- analyzePopulationStructure(
+  # Filter test_data
+  filtered_vcf <- filterPopulation(
     test_data$vcf_data,
     test_data$pop_metadata,
     test_data$rel_data,
+    population = c("CEU", "YRI")
+  )
+
+  # Test PCA
+  pca_results <- analyzePopulationStructure(
+    filtered_vcf$vcf_data,
+    filtered_vcf$pop_metadata,
+    filtered_vcf$rel_data,
     method = "pca",
     n_components = 2
   )
@@ -125,9 +133,9 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
 
   # Test admixture analysis
   admix_results <- analyzePopulationStructure(
-    test_data$vcf_data,
-    test_data$pop_metadata,
-    test_data$rel_data,
+    filtered_vcf$vcf_data,
+    filtered_vcf$pop_metadata,
+    filtered_vcf$rel_data,
     method = "admixture",
     n_components = 2
   )
