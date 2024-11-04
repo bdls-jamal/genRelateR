@@ -27,32 +27,73 @@ filterVariantsByVariance <- function(geno_mat, min_var = 1e-10) {
   return(geno_mat[keep_variants, , drop = FALSE])
 }
 
-#' Extract genotype matrix from VCF data
-#' @param vcf_data A CollapsedVCF object
-#' @return A numeric matrix of genotypes
-extractGenotypeMatrix <- function(vcf_data) {
-  # Extract the GT (genotype) field from the VCF
-  geno <- geno(vcf_data)$GT
-
-  if (is.null(geno)) {
-    stop("No GT (genotype) field found in VCF data")
+# Function to extract genotype data from CollapsedVCF
+extractGenotypeFromCollapsed <- function(collapsed_vcf) {
+  # First try accessing through assays
+  if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
+    stop("Please install SummarizedExperiment: BiocManager::install('SummarizedExperiment')")
   }
 
-  # Convert genotypes to numeric matrix
-  geno_num <- matrix(NA, nrow=nrow(geno), ncol=ncol(geno))
-  colnames(geno_num) <- colnames(geno)
-  rownames(geno_num) <- rownames(geno)
+  tryCatch({
+    # Try getting GT from assays directly
+    geno_data <- SummarizedExperiment::assay(collapsed_vcf, "GT")
+    return(geno_data)
+  }, error = function(e) {
+    # Alternative method using assays slot
+    tryCatch({
+      geno_data <- assays(collapsed_vcf)$GT
+      return(geno_data)
+    }, error = function(e) {
+      # Last resort - try accessing the internal structure
+      if (!is.null(collapsed_vcf@assays$GT)) {
+        return(collapsed_vcf@assays$GT)
+      } else {
+        stop("Could not find GT data in the CollapsedVCF object")
+      }
+    })
+  })
+}
 
-  for(i in 1:nrow(geno)) {
-    for(j in 1:ncol(geno)) {
-      if (!is.na(geno[i,j])) {
-        alleles <- strsplit(geno[i,j], "/|\\|")[[1]]
-        geno_num[i,j] <- sum(as.numeric(alleles))
+# Function to validate and process genotype data
+convertGTtoNumeric <- function(gt_data) {
+  # Create output matrix
+  geno_mat <- matrix(NA, nrow = nrow(gt_data), ncol = ncol(gt_data))
+
+  # Copy dimension names if they exist
+  if (!is.null(dimnames(gt_data))) {
+    dimnames(geno_mat) <- dimnames(gt_data)
+  }
+
+  # Conversion with input validation
+  for(i in 1:nrow(gt_data)) {
+    for(j in 1:ncol(gt_data)) {
+      gt <- as.character(gt_data[i,j])
+
+      # Handle different possible formats
+      if (grepl("[0-9]\\|[0-9]", gt) || grepl("[0-9]/[0-9]", gt)) {
+        # Split the genotype into alleles
+        alleles <- as.numeric(strsplit(gt, "[|/]")[[1]])
+
+        if (length(alleles) == 2) {
+          if (all(alleles == 0)) geno_mat[i,j] <- 0      # 0|0 -> 0
+          else if (all(alleles == 1)) geno_mat[i,j] <- 2 # 1|1 -> 2
+          else if (sum(alleles) == 1) geno_mat[i,j] <- 1 # 0|1 or 1|0 -> 1
+          else geno_mat[i,j] <- NA                       # Invalid format
+        }
+      } else {
+        geno_mat[i,j] <- NA  # Invalid format
       }
     }
   }
-  return(geno_num)
+
+  # Add informative attributes
+  attr(geno_mat, "encoding") <- c("0" = "Reference homozygous",
+                                  "1" = "Heterozygous",
+                                  "2" = "Alternate homozygous")
+
+  return(geno_mat)
 }
+
 
 #' Calculate IBS Matrix
 #' @param geno_mat Numeric genotype matrix
@@ -111,17 +152,17 @@ calculateFstMatrix <- function(geno_mat, pop_codes) {
 #' Compute genetic relatedness
 #' @param vcf_data A CollapsedVCF object
 #' @param pop_metadata Population metadata data.frame
-#' @param rel_data Relatedness information data.frame
 #' @param method One of "ibs" or "fst"
 #' @return List containing relatedness matrix and sample information
-computeRelatedness <- function(vcf_data, pop_metadata, rel_data, method = "ibs") {
+computeRelatedness <- function(vcf_data, pop_metadata, method = "ibs") {
   # Validate inputs
   if (!is(vcf_data, "CollapsedVCF")) {
     stop("vcf_data must be a CollapsedVCF object")
   }
 
   # Extract and convert genotype data
-  geno_mat <- extractGenotypeMatrix(vcf_data)
+  gt_data <- extractGenotypeFromCollapsed(vcf_data)
+  geno_mat <- convertGTtoNumeric(gt_data)
 
   # Get sample information
   samples <- colnames(vcf_data)
@@ -141,26 +182,20 @@ computeRelatedness <- function(vcf_data, pop_metadata, rel_data, method = "ibs")
     stop("Unsupported relatedness method")
   }
 
-  # Get excluded samples
-  excluded_samples <- rel_data$Sample
-  filtered_samples <- setdiff(samples, excluded_samples)
-
   return(list(
     relatedness_matrix = relatedness_matrix,
-    filtered_samples = filtered_samples,
-    excluded_samples = excluded_samples
+    samples = samples
   ))
 }
 
 #' Analyze population structure
 #' @param vcf_data A CollapsedVCF object
 #' @param pop_metadata Population metadata data.frame
-#' @param rel_data Relatedness information data.frame
 #' @param method One of "pca" or "admixture"
 #' @param n_components Number of components
 #' @param min_var Minimum variance threshold for filtering variants
 #' @return List containing analysis results
-analyzePopulationStructure <- function(vcf_data, pop_metadata, rel_data,
+analyzePopulationStructure <- function(vcf_data, pop_metadata,
                                        method = "pca", n_components = 2,
                                        min_var = 1e-10) {
   # Extract and convert genotype data
@@ -172,17 +207,13 @@ analyzePopulationStructure <- function(vcf_data, pop_metadata, rel_data,
     stop("No sample names found in VCF data")
   }
 
-  # Get excluded samples
-  excluded_samples <- rel_data$Sample
-  filtered_samples <- setdiff(samples, excluded_samples)
-
   # Filter data
-  filtered_geno <- geno_mat[, filtered_samples, drop = FALSE]
+  filtered_geno <- geno_mat[, samples, drop = FALSE]
 
   # Filter variants by variance
   filtered_geno <- filterVariantsByVariance(filtered_geno, min_var)
 
-  filtered_pop <- pop_metadata$pop[match(filtered_samples, pop_metadata$sample)]
+  filtered_pop <- pop_metadata$pop[match(samples, pop_metadata$sample)]
 
   if (method == "pca") {
     # Handle potential scaling issues
@@ -217,8 +248,7 @@ analyzePopulationStructure <- function(vcf_data, pop_metadata, rel_data,
     return(list(
       plot_data = plot_data,
       percent_var = percent_var,
-      filtered_samples = filtered_samples,
-      excluded_samples = excluded_samples
+      samples = samples
     ))
 
   } else if (method == "admixture") {
@@ -234,8 +264,7 @@ analyzePopulationStructure <- function(vcf_data, pop_metadata, rel_data,
 
     return(list(
       plot_data = plot_data,
-      filtered_samples = filtered_samples,
-      excluded_samples = excluded_samples
+      samples = samples
     ))
   }
 

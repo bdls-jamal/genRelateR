@@ -15,7 +15,14 @@ was developed using `R version 4.4.1 (2024-06-14 ucrt)`,
 ## Installation
 
 To install the latest version of the package:
-`r   install.packages("devtools")   library(devtools)   devtools::install_github("bdls-jamal/genRelateR", build_vignettes = TRUE)   library(genRelateR)`
+
+``` r
+install.packages("devtools")
+library(devtools)
+devtools::install_github("bdls-jamal/genRelateR", build_vignettes = TRUE)
+library(genRelateR) 
+```
+
 To run the Shiny app(not yet implemented):
 
 ``` r
@@ -26,11 +33,28 @@ rungenRelateR() # not yet implemented
 
 ``` r
 ls("package:genRelateR")
-data(package = "genRelateR") # optional
+data(package = "genRelateR")
 browseVignettes("genRelateR")
 ```
 
-`genRelateR` contains \# functions.
+`genRelateR` contains 9 functions.
+
+1.  ***loadGeneticData()*** loads and formats genetic data from various
+    sources
+2.  ***filterPopulation()*** filters data based on population,
+    geographic region, or genetic criteria
+3.  ***computeRelatedness()*** calculates genetic relatedness metrics
+    between populations
+4.  ***analyzePopulationStructure()*** performs PCA or admixture
+    analysis on population data
+5.  ***plotPopulationPca()*** plots population structure using PCA
+6.  ***plotRelatednessHeatmap()*** visualizes genetic relatedness
+    between populations using a heatmap
+7.  ***plotAncestryMap()*** maps the distribution of genetic ancestry
+    components
+8.  ***plotMigrationPaths()*** visualize migration paths
+9.  ***createRelatednessDashboard()*** generates an interactive shiny
+    dashboard for exploring relatedness data
 
 Add overview image later: Refer to package vignettes for more details.
 An overview of the package is illustrated below.
@@ -52,6 +76,6 @@ The author of the package is Kobi Jamal Schmalenberg.
 
 This package was developed as part of an assessment for 2024 BCB410H:
 Applied Bioinformatics course at the University of Toronto, Toronto,
-CANADA. `genRelateR` welcomes issues, enhancement requests, and other
+Canada. `genRelateR` welcomes issues, enhancement requests, and other
 contributions. To submit an issue, use the [GitHub
 issues](https://github.com/bdls-jamal/genRelateR/issues).

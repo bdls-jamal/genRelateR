@@ -13,7 +13,6 @@ library(dplyr)
 library(readr)
 library(stringr)
 
-
 test_that("loadGeneticData handles errors appropriately", {
   expect_error(loadGeneticData("nonexistent.vcf.gz"))
 })

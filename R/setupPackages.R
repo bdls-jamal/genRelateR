@@ -16,7 +16,11 @@ setupGeneticPackages <- function() {
     "dplyr",
     "tidyr",
     "testthat",
-    "stringr"
+    "stringr",
+    "ggrepel",
+    "sf",
+    "igraph",
+    "RColorBrewer"
   )
 
   # List of required Bioconductor packages
@@ -67,7 +71,11 @@ setupGeneticPackages <- function() {
     "readr",
     "dplyr",
     "tidyr",
-    "stringr"
+    "stringr",
+    "ggrepel",
+    "sf",
+    "igraph",
+    "RColorBrewer"
   )
 
   for (pkg in packages_to_load) {
@@ -82,7 +90,6 @@ setupGeneticPackages <- function() {
   # Check if all packages were successfully loaded
   loaded_packages <- (.packages())
   missing_packages <- setdiff(packages_to_load, loaded_packages)
-
   if (length(missing_packages) > 0) {
     warning(sprintf(
       "The following packages failed to load: %s",
@@ -118,7 +125,11 @@ checkGeneticPackages <- function() {
     "dplyr",
     "tidyr",
     "testthat",
-    "stringr"
+    "stringr",
+    "ggrepel",
+    "sf",
+    "igraph",
+    "RColorBrewer"
   )
 
   missing_packages <- required_packages[
@@ -132,12 +143,13 @@ checkGeneticPackages <- function() {
     ))
     return(FALSE)
   }
-
   return(TRUE)
 }
 
 # If this file is being sourced directly, run the setup
 if (sys.nframe() == 0) {
   setupGeneticPackages()
+  source("R/loadAndCleanData.R")
+  source("R/computationAndAnalysis.R")
+  source("R/visualizationScripts.R")
 }
-

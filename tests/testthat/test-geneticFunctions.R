@@ -73,7 +73,6 @@ test_that("computeRelatedness works with loaded VCF data", {
   ibs_results <- computeRelatedness(
     filtered_vcf$vcf_data,
     filtered_vcf$pop_metadata,
-    filtered_vcf$rel_data,
     method = "ibs"
   )
 
@@ -92,7 +91,6 @@ test_that("computeRelatedness works with loaded VCF data", {
   fst_results <- computeRelatedness(
     filtered_vcf$vcf_data,
     filtered_vcf$pop_metadata,
-    filtered_vcf$rel_data,
     method = "fst"
   )
 
@@ -108,7 +106,6 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
   filtered_vcf <- filterPopulation(
     test_data$vcf_data,
     test_data$pop_metadata,
-    test_data$rel_data,
     population = c("CEU", "YRI")
   )
 
@@ -116,7 +113,6 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
   pca_results <- analyzePopulationStructure(
     filtered_vcf$vcf_data,
     filtered_vcf$pop_metadata,
-    filtered_vcf$rel_data,
     method = "pca",
     n_components = 2
   )
@@ -135,7 +131,6 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
   admix_results <- analyzePopulationStructure(
     filtered_vcf$vcf_data,
     filtered_vcf$pop_metadata,
-    filtered_vcf$rel_data,
     method = "admixture",
     n_components = 2
   )
