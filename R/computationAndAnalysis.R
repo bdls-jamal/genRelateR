@@ -28,6 +28,7 @@ filterVariantsByVariance <- function(geno_mat, min_var = 1e-10) {
 }
 
 # Function to extract genotype data from CollapsedVCF
+#' @param collapsed_vcf vcf data in the collapsed form
 extractGenotypeFromCollapsed <- function(collapsed_vcf) {
   # First try accessing through assays
   if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
@@ -124,30 +125,66 @@ calculateIBSMatrix <- function(geno_mat) {
   return(ibs_mat)
 }
 
-calculateFstMatrix <- function(geno_mat, pop_codes) {
-  # Simple implementation of Weir and Cockerham's Fst
-  unique_pops <- unique(pop_codes)
-  n_pops <- length(unique_pops)
+# Calculate FST Matrix
+#' @param geno_mat Numeric genotype matrix
+#' @param pop_codes table of 3 letter population codes mapped to names
+#' @return FST similarity matrix
+calculateFSTMatrix <- function(geno_mat, pop_codes) {
+  # Check that input matrix is valid
+  if (!is.matrix(geno_mat)) {
+    stop("Input must be a matrix")
+  }
+
+  if (!is.numeric(geno_mat)) {
+    stop("Input matrix must be numeric")
+  }
+
+  if (length(pop_codes) != ncol(geno_mat)) {
+    stop("Length of pop_codes must match number of columns in geno_mat")
+  }
+
+  # Get unique populations
+  populations <- unique(pop_codes)
+  n_pops <- length(populations)
+
+  # Initialize FST matrix
   fst_mat <- matrix(0, n_pops, n_pops)
-  rownames(fst_mat) <- colnames(fst_mat) <- unique_pops
+  colnames(fst_mat) <- populations
+  rownames(fst_mat) <- populations
 
-  # Convert genotypes to allele frequencies per population
-  for(i in 1:n_pops) {
-    for(j in i:n_pops) {
-      pop1_samples <- pop_codes == unique_pops[i]
-      pop2_samples <- pop_codes == unique_pops[j]
+  # Calculate allele frequencies and FST for each pair of populations
+  for (i in 1:n_pops) {
+    for (j in i:n_pops) {
+      pop_i <- populations[i]
+      pop_j <- populations[j]
 
-      # Calculate allele frequencies
-      freq1 <- rowMeans(geno_mat[,pop1_samples] == "1|1", na.rm=TRUE)
-      freq2 <- rowMeans(geno_mat[,pop2_samples] == "1|1", na.rm=TRUE)
+      # Select samples for each population
+      samples_i <- geno_mat[, pop_codes == pop_i, drop = FALSE]
+      samples_j <- geno_mat[, pop_codes == pop_j, drop = FALSE]
 
-      # Simple Fst calculation
-      fst <- mean(abs(freq1 - freq2), na.rm=TRUE)
-      fst_mat[i,j] <- fst_mat[j,i] <- fst
+      # Calculate allele frequencies within each population
+      freq_i <- rowMeans(samples_i, na.rm = TRUE) / 2
+      freq_j <- rowMeans(samples_j, na.rm = TRUE) / 2
+      freq_total <- rowMeans(cbind(samples_i, samples_j), na.rm = TRUE) / 2
+
+      # Heterozygosity calculations, with safeguard against negative values
+      Hs_i <- sum(2 * freq_i * (1 - freq_i), na.rm = TRUE)
+      Hs_j <- sum(2 * freq_j * (1 - freq_j), na.rm = TRUE)
+      Hs <- (Hs_i + Hs_j) / 2
+
+      Ht <- sum(2 * freq_total * (1 - freq_total), na.rm = TRUE)
+
+      # Calculate FST if Ht is not zero
+      fst <- if (Ht > 0) max((Ht - Hs) / Ht, 0) else 0
+
+      # Assign FST value symmetrically
+      fst_mat[i, j] <- fst_mat[j, i] <- fst
     }
   }
+
   return(fst_mat)
 }
+
 
 #' Compute genetic relatedness
 #' @param vcf_data A CollapsedVCF object
@@ -177,7 +214,7 @@ computeRelatedness <- function(vcf_data, pop_metadata, method = "ibs") {
   relatedness_matrix <- if (method == "ibs") {
     calculateIBSMatrix(geno_mat)
   } else if (method == "fst") {
-    calculateFstMatrix(geno_mat, pop_codes)
+    calculateFSTMatrix(geno_mat, pop_codes)
   } else {
     stop("Unsupported relatedness method")
   }
@@ -199,7 +236,8 @@ analyzePopulationStructure <- function(vcf_data, pop_metadata,
                                        method = "pca", n_components = 2,
                                        min_var = 1e-10) {
   # Extract and convert genotype data
-  geno_mat <- extractGenotypeMatrix(vcf_data)
+  gt_data <- extractGenotypeFromCollapsed(vcf_data)
+  geno_mat <- convertGTtoNumeric(gt_data)
 
   # Get sample information
   samples <- colnames(vcf_data)

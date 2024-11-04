@@ -12,17 +12,12 @@ setup_test_data <- function() {
   # Get file paths
   vcf_path <- normalizePath("../../data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
                             mustWork = FALSE)
-  rel_path <- normalizePath("../../data/20140625_related_individuals.txt",
-                            mustWork = FALSE)
   pop_path <- normalizePath("../../data/population_metadata.txt",
                             mustWork = FALSE)
 
   # Check file existence
   if (!file.exists(vcf_path)) {
     skip(paste("VCF file not found at:", vcf_path))
-  }
-  if (!file.exists(rel_path)) {
-    skip(paste("Relatedness file not found at:", rel_path))
   }
   if (!file.exists(pop_path)) {
     skip(paste("Population metadata file not found at:", pop_path))
@@ -45,7 +40,6 @@ setup_test_data <- function() {
   test_data <- list(
     vcf_data = vcf_data,
     pop_metadata = pop_path,
-    rel_data = rel_path,
     n_samples = ncol(vcf_data)
   )
 
@@ -65,8 +59,7 @@ test_that("computeRelatedness works with loaded VCF data", {
   filtered_vcf <- filterPopulation(
     test_data$vcf_data,
     test_data$pop_metadata,
-    test_data$rel_data,
-    population = c("CEU", "YRI")
+    population = c("CEU", "YRI", "GBR")
   )
 
   # Test IBS calculation
@@ -79,13 +72,12 @@ test_that("computeRelatedness works with loaded VCF data", {
   # Check structure of results
   expect_type(ibs_results, "list")
   expect_true("relatedness_matrix" %in% names(ibs_results))
-  expect_true("filtered_samples" %in% names(ibs_results))
-  expect_true("excluded_samples" %in% names(ibs_results))
+  expect_true("samples" %in% names(ibs_results))
 
   # Check matrix properties
   expect_true(is.matrix(ibs_results$relatedness_matrix))
   expect_equal(nrow(ibs_results$relatedness_matrix),
-               length(ibs_results$filtered_samples))
+               length(ibs_results$samples))
 
   # Test FST calculation
   fst_results <- computeRelatedness(
@@ -106,7 +98,7 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
   filtered_vcf <- filterPopulation(
     test_data$vcf_data,
     test_data$pop_metadata,
-    population = c("CEU", "YRI")
+    population = c("CEU", "YRI", "GBR")
   )
 
   # Test PCA
@@ -119,8 +111,7 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
 
   # Check results structure
   expect_type(pca_results, "list")
-  expect_true(all(c("plot_data", "percent_var", "filtered_samples",
-                    "excluded_samples") %in% names(pca_results)))
+  expect_true(all(c("plot_data", "percent_var", "samples") %in% names(pca_results)))
 
   # Check plot data
   expect_true("PC1" %in% names(pca_results$plot_data))
@@ -137,8 +128,7 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
 
   # Check results structure
   expect_type(admix_results, "list")
-  expect_true(all(c("plot_data", "filtered_samples",
-                    "excluded_samples") %in% names(admix_results)))
+  expect_true(all(c("plot_data", "samples") %in% names(admix_results)))
 
   # Check plot data
   expect_true("MDS1" %in% names(admix_results$plot_data))

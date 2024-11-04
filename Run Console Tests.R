@@ -21,7 +21,7 @@ filtered_data <- filterPopulation(genetic_data, pop_metadata, population = c("CE
 # Compute relatedness
 relatedness_results <- computeRelatedness(
   filtered_data$vcf_data,
-  filtered_data$pop_metadata,
+  filtered_data$pop_metadata
 )
 
 pop_codes <- read.table("data/population_codes.txt", header = FALSE, col.names = c("Code", "Population"))
