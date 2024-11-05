@@ -38,7 +38,7 @@ plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, elli
 
   # Create the plot with improved aesthetics
   p <- ggplot(plot_data,
-              aes(x = PC1, y = PC2, color = .data[[color_var]])) +  # Use .data pronoun
+              aes(x = PC1, y = PC2, color = .data[[color_var]])) +
     geom_point(alpha = 0.7, size = 2) +
     scale_color_manual(
       values = colors,
@@ -52,12 +52,12 @@ plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, elli
     ) +
     theme(
       legend.position = "right",
-      legend.text = element_text(size = 8),
-      legend.title = element_text(size = 10, face = "bold"),
+      legend.text = element_text(linewidth = 8),
+      legend.title = element_text(linewidth = 10, face = "bold"),
       legend.key.size = unit(1, "lines"),
       panel.grid.major = element_line(color = "gray90"),
       panel.grid.minor = element_line(color = "gray95"),
-      plot.title = element_text(face = "bold", size = 14),
+      plot.title = element_text(face = "bold", linewidth = 14),
       axis.title = element_text(face = "bold")
     )
 
@@ -156,7 +156,7 @@ plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
   p <- ggplot() +
     geom_map(data = world, map = world,
              aes(map_id = region),
-             color = "gray70", fill = "gray90", size = 0.2) +
+             color = "gray70", fill = "gray90", linewidth = 0.2) +
     xlim(-180, 180) +
     ylim(-90, 90)
 
@@ -167,7 +167,7 @@ plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
                  aes(x = Longitude, y = Latitude, color = population),
                  alpha = 0.7, size = 3) +
       scale_color_viridis_d(name = "Population") +
-      guides(color = guide_legend(override.aes = list(size = 4, alpha = 1),
+      guides(color = guide_legend(override.aes = list(linewidth = 4, alpha = 1),
                                   title.position = "top",
                                   ncol = 2))  # Adjust number of columns as needed
   } else {
@@ -177,7 +177,7 @@ plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
                  aes(x = Longitude, y = Latitude, color = super_pop),
                  alpha = 0.7, size = 3) +
       scale_color_viridis_d(name = "Super\nPopulation") +  # Added line break in title
-      guides(color = guide_legend(override.aes = list(size = 4, alpha = 1),
+      guides(color = guide_legend(override.aes = list(linewidth = 4, alpha = 1),
                                   title.position = "top",
                                   ncol = 2))  # Adjust number of columns as needed
   }
@@ -243,7 +243,7 @@ plotMigrationPaths <- function(relatedness_results, pop_metadata,
   p <- ggplot() +
     geom_map(data = world, map = world,
              aes(long, lat, map_id = region),
-             color = "gray70", fill = "gray90", size = 0.2) +
+             color = "gray70", fill = "gray90", linewidth = 0.2) +
     geom_curve(data = coords,
                aes(x = Longitude.1, y = Latitude.1,
                    xend = Longitude.2, yend = Latitude.2,

@@ -84,14 +84,11 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 #' Filter Population Data
 #'
 #' This function filters VCF data based on population metadata from the 1000 Genomes Project.
-#' Includes optional filtering of related individuals.
 #'
 #' @param vcf_data A VCF object loaded using loadGeneticData
 #' @param pop_file Path to population metadata file (tab-delimited with columns: Sample, Population, SuperPop)
 #' @param population Vector of population codes to include (e.g., c("CEU", "YRI"))
 #' @param super_pop Vector of super-population codes (e.g., c("EUR", "AFR"))
-#' @param remove_related Logical indicating whether to remove related individuals (default: FALSE)
-#' @param prioritize_gender Character indicating which gender to prioritize when removing related pairs ("male" or "female", default: NULL)
 #' @return Filtered VCF object
 #' @export
 #' @import VariantAnnotation dplyr readr stringr
@@ -124,11 +121,11 @@ filterPopulation <- function(vcf_data, pop_file, population = NULL,
   }
 
   # Append pop code and name mapping to metadata
-  pop_names_df <- read.table("../data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
+  pop_names_df <- read.table("data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
   pop_metadata$population <- pop_names_df$Name[match(pop_metadata$pop, pop_names_df$Code)]
 
   # Append long and lat of each pop code to metadata
-  pop_long_lat <- read.table("../data/population_long_lat.txt", header = TRUE, sep = "\t")
+  pop_long_lat <- read.table("data/population_long_lat.txt", header = TRUE, sep = "\t")
   pop_metadata$Longitude <- pop_long_lat$Longitude[match(pop_metadata$pop, pop_long_lat$Name)]
   pop_metadata$Latitude <- pop_long_lat$Latitude[match(pop_metadata$pop, pop_long_lat$Name)]
 

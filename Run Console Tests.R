@@ -1,16 +1,11 @@
-# Load required packages
-library(ggplot2)
-library(viridis)
-library(reshape2)
-library(maps)
-library(plotly)
-library(Matrix)
-library(parallel)
-
 # Example data setup
 # Load genetic data
-vcf_file <- "data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
-genetic_data <- loadGeneticData(vcf_file)
+vcf_file <- "data/vcf/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+chr22_region <- GRanges(
+  seqnames = "22",
+  ranges = IRanges(start = 19999000, end = 20001000)
+)
+genetic_data <- loadGeneticData(vcf_file, regions = chr22_region)
 
 # Create sample population metadata
 pop_metadata <- "data/population_metadata.txt"
@@ -24,14 +19,7 @@ populations <- c(
   "PEL", "GIH", "PJL", "BEB", "STU", "ITU"
 )
 
-
 filtered_data <- filterPopulation(genetic_data, pop_metadata, populations)
-
-# Compute relatedness
-relatedness_results <- computeRelatedness(
-  filtered_data$vcf_data,
-  filtered_data$pop_metadata
-)
 
 # Perform population structure analysis
 pca_results <- analyzePopulationStructure(
@@ -51,13 +39,6 @@ pca_plot <- plotPopulationPca(
 )
 print(pca_plot)
 
-# Relatedness heatmap
-heatmap_plot <- plotRelatednessHeatmap(
-  relatedness_results,
-  title = "Population Relatedness"
-)
-print(heatmap_plot)
-
 # Ancestry map
 ancestry_map <- plotAncestryMap(
   pca_results,
@@ -66,11 +47,3 @@ ancestry_map <- plotAncestryMap(
 )
 print(ancestry_map)
 
-# Migration paths
-migration_plot <- plotMigrationPaths(
-  relatedness_results,
-  filtered_data$pop_metadata,
-  threshold = 0.2,
-  title = "Inferred Migration Paths"
-)
-print(migration_plot)
