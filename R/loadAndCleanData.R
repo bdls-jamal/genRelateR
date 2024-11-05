@@ -96,7 +96,7 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 #' @export
 #' @import VariantAnnotation dplyr readr stringr
 filterPopulation <- function(vcf_data, pop_file, population = NULL,
-                             super_pop = NULL, prioritize_gender = NULL) {
+                             super_pop = NULL) {
   # Load population metadata
   pop_metadata <- read_tsv(pop_file, col_types = cols())
   pop_metadata<- pop_metadata[, c(1, 2, 3, 4)]
@@ -122,6 +122,15 @@ filterPopulation <- function(vcf_data, pop_file, population = NULL,
     selected_samples <- selected_samples %>%
       filter(super_pop %in% super_pop)
   }
+
+  # Append pop code and name mapping to metadata
+  pop_names_df <- read.table("../data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
+  pop_metadata$population <- pop_names_df$Name[match(pop_metadata$pop, pop_names_df$Code)]
+
+  # Append long and lat of each pop code to metadata
+  pop_long_lat <- read.table("../data/population_long_lat.txt", header = TRUE, sep = "\t")
+  pop_metadata$Longitude <- pop_long_lat$Longitude[match(pop_metadata$pop, pop_long_lat$Name)]
+  pop_metadata$Latitude <- pop_long_lat$Latitude[match(pop_metadata$pop, pop_long_lat$Name)]
 
   # Subset VCF to selected samples
   filtered_vcf <- vcf_data[, selected_samples$sample]

@@ -20,7 +20,9 @@ setupGeneticPackages <- function() {
     "ggrepel",
     "sf",
     "igraph",
-    "RColorBrewer"
+    "RColorBrewer",
+    "plotly",
+    "mapproj"
   )
 
   # List of required Bioconductor packages
@@ -55,6 +57,8 @@ setupGeneticPackages <- function() {
 
   # Load all required packages with error handling
   packages_to_load <- c(
+    "Matrix",
+    "parallel",
     # Bioconductor packages
     "VariantAnnotation",
     "GenomicRanges",
@@ -75,7 +79,9 @@ setupGeneticPackages <- function() {
     "ggrepel",
     "sf",
     "igraph",
-    "RColorBrewer"
+    "RColorBrewer",
+    "plotly",
+    "mapproj"
   )
 
   for (pkg in packages_to_load) {
@@ -108,6 +114,8 @@ setupGeneticPackages <- function() {
 #' @export
 checkGeneticPackages <- function() {
   required_packages <- c(
+    "Matrix",
+    "parallel",
     # Bioconductor
     "VariantAnnotation",
     "GenomicRanges",
@@ -129,7 +137,9 @@ checkGeneticPackages <- function() {
     "ggrepel",
     "sf",
     "igraph",
-    "RColorBrewer"
+    "RColorBrewer",
+    "plotly",
+    "mapproj"
   )
 
   missing_packages <- required_packages[

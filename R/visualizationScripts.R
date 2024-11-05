@@ -10,29 +10,67 @@
 #' @return ggplot object
 #' @import ggplot2 ggrepel
 #' @export
-plotPopulationPca <- function(analysis_results, title = NULL,
-                              ellipses = TRUE, labels = FALSE) {
+plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, ellipses = TRUE, super_pop = FALSE) {
+  # Convert row names to a column in analysis_results$plot_data for merging
+  analysis_results$plot_data <- data.frame(
+    sample = row.names(analysis_results$plot_data),
+    analysis_results$plot_data
+  )
 
-  # Basic plot without any potential problematic elements
-  p <- ggplot(analysis_results$plot_data,
-              aes(x = PC1, y = PC2, color = Population)) +
-    geom_point(alpha = 0.7, position = position_jitter(width = 0.1, height = 0.1)) +
-    scale_color_viridis_d() +
-    theme_bw() +
+  # Merge analysis results with population metadata
+  plot_data <- merge(
+    analysis_results$plot_data,
+    pop_metadata[, c("sample", "Longitude", "Latitude", "population", "super_pop")],
+    by = "sample",
+    all.x = TRUE
+  )
+
+  # Determine whether to color by Population or Super Population
+  color_var <- if (super_pop) "super_pop" else "population"
+
+  # Get number of unique populations/super populations
+  unique_groups <- unique(plot_data[[color_var]])
+  n_groups <- length(unique_groups)
+
+  # Generate distinct colors using a simple rainbow scheme
+  colors <- rainbow(n_groups)
+  names(colors) <- unique_groups
+
+  # Create the plot with improved aesthetics
+  p <- ggplot(plot_data,
+              aes(x = PC1, y = PC2, color = .data[[color_var]])) +  # Use .data pronoun
+    geom_point(alpha = 0.7, size = 2) +
+    scale_color_manual(
+      values = colors,
+      name = if (super_pop) "Super Population" else "Population"
+    ) +
+    theme_bw(base_size = 12) +
     labs(
       x = sprintf("PC1 (%.1f%%)", analysis_results$percent_var[1]),
       y = sprintf("PC2 (%.1f%%)", analysis_results$percent_var[2]),
       title = title
+    ) +
+    theme(
+      legend.position = "right",
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 10, face = "bold"),
+      legend.key.size = unit(1, "lines"),
+      panel.grid.major = element_line(color = "gray90"),
+      panel.grid.minor = element_line(color = "gray95"),
+      plot.title = element_text(face = "bold", size = 14),
+      axis.title = element_text(face = "bold")
     )
 
   # Add confidence ellipses if requested
   if (ellipses) {
-    p <- p + stat_ellipse(level = 0.95, alpha = 0.5)
+    p <- p + stat_ellipse(aes(group = .data[[color_var]]),
+                          level = 0.95,
+                          alpha = 0.3,
+                          linewidth = 0.7)
   }
 
   return(p)
 }
-
 #' Plot Relatedness Heatmap
 #'
 #' Creates a heatmap visualization of genetic relatedness between populations
@@ -79,27 +117,32 @@ plotRelatednessHeatmap <- function(relatedness_results, pop_metadata,
 #' Plot Ancestry Map
 #'
 #' Creates a map visualization of genetic ancestry components across geographic regions
-#'
-#' @param analysis_results Results from analyzePopulationStructure() with method="admixture"
-#' @param pop_metadata Population metadata including geographic coordinates
-#' @param map_data Optional map data for custom boundaries
-#' @param title Plot title (optional)
-#' @return ggplot object
-#' @import ggplot2 sf
-#' @export
+#' @param analysis_results Analysis results from population structure analysis
+#' @param pop_metadata Population metadata with geographic information
+#' @param map_data Optional pre-loaded map data
+#' @param title Plot title
+#' @param individual Boolean to plot individual populations vs super populations
+#' @return Either a ggplot object or plotly object depending on interactive parameter
 plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
-                            title = NULL) {
+                            title = NULL, individual = FALSE) {
   # Validate inputs
-  if (!all(c("Longitude", "Latitude") %in% colnames(pop_metadata))) {
-    stop("Population metadata must include Longitude and Latitude columns")
+  if (!all(c("Longitude", "Latitude", "super_pop") %in% colnames(pop_metadata))) {
+    stop("Population metadata must include Longitude, Latitude, and super_pop columns")
   }
+
+  # Convert row names to a column in analysis_results$plot_data for merging
+  analysis_results$plot_data <- data.frame(
+    sample = row.names(analysis_results$plot_data),
+    analysis_results$plot_data
+  )
 
   # Merge analysis results with geographic data
   plot_data <- merge(
     analysis_results$plot_data,
-    pop_metadata[, c("sample", "Longitude", "Latitude", "Population")],
-    by.x = "rownames(analysis_results$plot_data)",
-    by.y = "sample"
+    pop_metadata[, c("sample", "Longitude", "Latitude", "population", "super_pop")],
+    by.x = "sample",
+    by.y = "sample",
+    all.x = TRUE
   )
 
   # Create base map
@@ -109,22 +152,51 @@ plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
     map_data
   }
 
-  # Create map plot
+  # Create base plot
   p <- ggplot() +
     geom_map(data = world, map = world,
-             aes(long, lat, map_id = region),
+             aes(map_id = region),
              color = "gray70", fill = "gray90", size = 0.2) +
-    geom_point(data = plot_data,
-               aes(x = Longitude, y = Latitude, color = Population),
-               alpha = 0.7, size = 3) +
-    scale_color_viridis_d() +
+    xlim(-180, 180) +
+    ylim(-90, 90)
+
+  if (individual) {
+    # Plot by individual populations
+    p <- p +
+      geom_point(data = plot_data,
+                 aes(x = Longitude, y = Latitude, color = population),
+                 alpha = 0.7, size = 3) +
+      scale_color_viridis_d(name = "Population") +
+      guides(color = guide_legend(override.aes = list(size = 4, alpha = 1),
+                                  title.position = "top",
+                                  ncol = 2))  # Adjust number of columns as needed
+  } else {
+    # Plot by super-populations
+    p <- p +
+      geom_point(data = plot_data,
+                 aes(x = Longitude, y = Latitude, color = super_pop),
+                 alpha = 0.7, size = 3) +
+      scale_color_viridis_d(name = "Super\nPopulation") +  # Added line break in title
+      guides(color = guide_legend(override.aes = list(size = 4, alpha = 1),
+                                  title.position = "top",
+                                  ncol = 2))  # Adjust number of columns as needed
+  }
+
+  # Add common theme elements with modified legend
+  p <- p +
     theme_minimal() +
     labs(title = title) +
-    coord_fixed(1.3)
+    coord_fixed(1.3)  +
+    theme(
+      legend.position = "right",
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      panel.grid.major = element_line(color = "gray90"),
+      panel.grid.minor = element_line(color = "gray95"),
+      aspect.ratio = 0.5
+    )
 
   return(p)
 }
-
 #' Plot Migration Paths
 #'
 #' Visualizes inferred migration paths between populations based on genetic similarity

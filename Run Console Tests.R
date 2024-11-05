@@ -3,9 +3,9 @@ library(ggplot2)
 library(viridis)
 library(reshape2)
 library(maps)
-
-source("R/setupPackages.R")
-source("R/loadAndCleanData.R")
+library(plotly)
+library(Matrix)
+library(parallel)
 
 # Example data setup
 # Load genetic data
@@ -16,7 +16,16 @@ genetic_data <- loadGeneticData(vcf_file)
 pop_metadata <- "data/population_metadata.txt"
 
 # Filter populations
-filtered_data <- filterPopulation(genetic_data, pop_metadata, population = c("CEU", "YRI", "GBR"))
+populations <- c(
+  "CHB", "JPT", "CHS", "CDX", "KHV",
+  "CEU", "TSI", "GBR", "FIN", "IBS",
+  "YRI", "LWK", "GWD", "MSL", "ESN",
+  "ASW", "ACB", "MXL", "PUR", "CLM",
+  "PEL", "GIH", "PJL", "BEB", "STU", "ITU"
+)
+
+
+filtered_data <- filterPopulation(genetic_data, pop_metadata, populations)
 
 # Compute relatedness
 relatedness_results <- computeRelatedness(
@@ -35,8 +44,10 @@ pca_results <- analyzePopulationStructure(
 # PCA plot
 pca_plot <- plotPopulationPca(
   analysis_results = pca_results,
+  filtered_data$pop_metadata,
   title = "Population Structure PCA",
-  ellipses = TRUE
+  ellipses = TRUE,
+  super_pop = TRUE
 )
 print(pca_plot)
 

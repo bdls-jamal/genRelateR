@@ -30,6 +30,7 @@ filterVariantsByVariance <- function(geno_mat, min_var = 1e-10) {
 # Function to extract genotype data from CollapsedVCF
 #' @param collapsed_vcf vcf data in the collapsed form
 extractGenotypeFromCollapsed <- function(collapsed_vcf) {
+  # First try accessing through assays
   if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
     stop("Please install SummarizedExperiment: BiocManager::install('SummarizedExperiment')")
   }
@@ -39,10 +40,12 @@ extractGenotypeFromCollapsed <- function(collapsed_vcf) {
     geno_data <- SummarizedExperiment::assay(collapsed_vcf, "GT")
     return(geno_data)
   }, error = function(e) {
+    # Alternative method using assays slot
     tryCatch({
       geno_data <- assays(collapsed_vcf)$GT
       return(geno_data)
     }, error = function(e) {
+      # Last resort - try accessing the internal structure
       if (!is.null(collapsed_vcf@assays$GT)) {
         return(collapsed_vcf@assays$GT)
       } else {
@@ -54,18 +57,37 @@ extractGenotypeFromCollapsed <- function(collapsed_vcf) {
 
 # Function to validate and process genotype data
 convertGTtoNumeric <- function(gt_data) {
-  # Convert to character matrix once
-  gt_chars <- as.character(gt_data)
-
   # Create output matrix
-  geno_mat <- matrix(NA_real_, nrow = nrow(gt_data), ncol = ncol(gt_data))
-  dimnames(geno_mat) <- dimnames(gt_data)
+  geno_mat <- matrix(NA, nrow = nrow(gt_data), ncol = ncol(gt_data))
 
-  # Vectorized conversion using regex
-  geno_mat[grep("0[|/]0", gt_chars)] <- 0
-  geno_mat[grep("1[|/]1", gt_chars)] <- 2
-  geno_mat[grep("(0[|/]1|1[|/]0)", gt_chars)] <- 1
+  # Copy dimension names if they exist
+  if (!is.null(dimnames(gt_data))) {
+    dimnames(geno_mat) <- dimnames(gt_data)
+  }
 
+  # Conversion with input validation
+  for(i in 1:nrow(gt_data)) {
+    for(j in 1:ncol(gt_data)) {
+      gt <- as.character(gt_data[i,j])
+
+      # Handle different possible formats
+      if (grepl("[0-9]\\|[0-9]", gt) || grepl("[0-9]/[0-9]", gt)) {
+        # Split the genotype into alleles
+        alleles <- as.numeric(strsplit(gt, "[|/]")[[1]])
+
+        if (length(alleles) == 2) {
+          if (all(alleles == 0)) geno_mat[i,j] <- 0      # 0|0 -> 0
+          else if (all(alleles == 1)) geno_mat[i,j] <- 2 # 1|1 -> 2
+          else if (sum(alleles) == 1) geno_mat[i,j] <- 1 # 0|1 or 1|0 -> 1
+          else geno_mat[i,j] <- NA                       # Invalid format
+        }
+      } else {
+        geno_mat[i,j] <- NA  # Invalid format
+      }
+    }
+  }
+
+  # Add informative attributes
   attr(geno_mat, "encoding") <- c("0" = "Reference homozygous",
                                   "1" = "Heterozygous",
                                   "2" = "Alternate homozygous")
@@ -76,91 +98,29 @@ convertGTtoNumeric <- function(gt_data) {
 #' Calculate IBS Matrix
 #' @param geno_mat Numeric genotype matrix
 #' @return IBS similarity matrix
-calculateIBSMatrixOptimized <- function(geno_mat) {
-  if (!is.matrix(geno_mat) || !is.numeric(geno_mat)) {
-    stop("Input must be a numeric matrix")
+calculateIBSMatrix <- function(geno_mat) {
+  if (!is.matrix(geno_mat)) {
+    stop("Input must be a matrix")
+  }
+
+  if (!is.numeric(geno_mat)) {
+    stop("Input matrix must be numeric")
   }
 
   n_samples <- ncol(geno_mat)
+  ibs_mat <- matrix(0, n_samples, n_samples)
+  colnames(ibs_mat) <- colnames(geno_mat)
+  rownames(ibs_mat) <- colnames(geno_mat)
 
-  # Convert to sparse matrix for efficient operations
-  sparse_geno <- Matrix::Matrix(geno_mat, sparse = TRUE)
-
-  # Initialize result matrix
-  ibs_mat <- Matrix::Matrix(0, n_samples, n_samples)
-  dimnames(ibs_mat) <- list(colnames(geno_mat), colnames(geno_mat))
-
-  # Calculate in parallel if possible
-  if (requireNamespace("parallel", quietly = TRUE)) {
-    # Determine number of cores (leave one for system)
-    n_cores <- max(1, parallel::detectCores() - 1)
-
-    # Create cluster
-    cl <- parallel::makeCluster(n_cores)
-    on.exit(parallel::stopCluster(cl))
-
-    # Export necessary data
-    parallel::clusterExport(cl, c("sparse_geno"), envir = environment())
-
-    # Split work into chunks
-    chunks <- split(1:n_samples, cut(1:n_samples, n_cores))
-
-    # Process chunks in parallel
-    results <- parallel::parLapply(cl, chunks, function(idx_range) {
-      result_chunk <- Matrix::Matrix(0, n_samples, length(idx_range))
-
-      for (i in seq_along(idx_range)) {
-        idx <- idx_range[i]
-        col_i <- sparse_geno[, idx]
-        valid_i <- !is.na(col_i)
-
-        for (j in idx:n_samples) {
-          col_j <- sparse_geno[, j]
-          valid_j <- !is.na(col_j)
-
-          # Calculate shared valid positions
-          valid_both <- valid_i & valid_j
-          shared <- sum(valid_both)
-
-          if (shared > 0) {
-            # Calculate matches only for valid positions
-            matches <- sum(col_i[valid_both] == col_j[valid_both])
-            result_chunk[j, i] <- matches / shared
-          }
-        }
-      }
-      return(result_chunk)
-    })
-
-    # Combine results
-    for (i in seq_along(chunks)) {
-      idx_range <- chunks[[i]]
-      chunk_result <- results[[i]]
-      ibs_mat[, idx_range] <- chunk_result
-    }
-  } else {
-    # Non-parallel fallback with optimizations
-    for (i in 1:n_samples) {
-      col_i <- sparse_geno[, i]
-      valid_i <- !is.na(col_i)
-
-      for (j in i:n_samples) {
-        col_j <- sparse_geno[, j]
-        valid_j <- !is.na(col_j)
-
-        valid_both <- valid_i & valid_j
-        shared <- sum(valid_both)
-
-        if (shared > 0) {
-          matches <- sum(col_i[valid_both] == col_j[valid_both])
-          ibs_mat[i, j] <- ibs_mat[j, i] <- matches / shared
-        }
+  for(i in 1:n_samples) {
+    for(j in i:n_samples) {
+      shared <- sum(!is.na(geno_mat[,i]) & !is.na(geno_mat[,j]))
+      if(shared > 0) {
+        ibs <- sum(geno_mat[,i] == geno_mat[,j], na.rm=TRUE) / shared
+        ibs_mat[i,j] <- ibs_mat[j,i] <- ibs
       }
     }
   }
-
-  # Make symmetric
-  ibs_mat <- as.matrix(ibs_mat + t(ibs_mat) - Diagonal(n_samples) * diag(ibs_mat))
   return(ibs_mat)
 }
 
@@ -168,58 +128,55 @@ calculateIBSMatrixOptimized <- function(geno_mat) {
 #' @param geno_mat Numeric genotype matrix
 #' @param pop_codes table of 3 letter population codes mapped to names
 #' @return FST similarity matrix
-calculateFSTMatrixOptimized <- function(geno_mat, pop_codes) {
-  if (!is.matrix(geno_mat) || !is.numeric(geno_mat)) {
-    stop("Input must be a numeric matrix")
+calculateFSTMatrix <- function(geno_mat, pop_codes) {
+  # Check that input matrix is valid
+  if (!is.matrix(geno_mat)) {
+    stop("Input must be a matrix")
   }
 
+  if (!is.numeric(geno_mat)) {
+    stop("Input matrix must be numeric")
+  }
+
+  if (length(pop_codes) != ncol(geno_mat)) {
+    stop("Length of pop_codes must match number of columns in geno_mat")
+  }
+
+  # Get unique populations
   populations <- unique(pop_codes)
   n_pops <- length(populations)
 
-  # Pre-calculate population indices and frequencies
-  pop_indices <- lapply(populations, function(pop) which(pop_codes == pop))
-
-  # Pre-calculate frequencies in parallel if possible
-  if (requireNamespace("parallel", quietly = TRUE)) {
-    cl <- parallel::makeCluster(max(1, parallel::detectCores() - 1))
-    on.exit(parallel::stopCluster(cl))
-
-    parallel::clusterExport(cl, c("geno_mat", "pop_indices"), envir = environment())
-
-    pop_freqs <- parallel::parLapply(cl, pop_indices, function(idx) {
-      rowMeans(geno_mat[, idx, drop = FALSE], na.rm = TRUE) / 2
-    })
-  } else {
-    pop_freqs <- lapply(pop_indices, function(idx) {
-      rowMeans(geno_mat[, idx, drop = FALSE], na.rm = TRUE) / 2
-    })
-  }
-
-  # Initialize matrix
+  # Initialize FST matrix
   fst_mat <- matrix(0, n_pops, n_pops)
-  dimnames(fst_mat) <- list(populations, populations)
+  colnames(fst_mat) <- populations
+  rownames(fst_mat) <- populations
 
-  # Calculate FST values
+  # Calculate allele frequencies and FST for each pair of populations
   for (i in 1:n_pops) {
-    freq_i <- pop_freqs[[i]]
-    n_i <- length(pop_indices[[i]])
-
     for (j in i:n_pops) {
-      freq_j <- pop_freqs[[j]]
-      n_j <- length(pop_indices[[j]])
+      pop_i <- populations[i]
+      pop_j <- populations[j]
 
-      # Vectorized calculations
-      freq_total <- (freq_i * n_i + freq_j * n_j) / (n_i + n_j)
+      # Select samples for each population
+      samples_i <- geno_mat[, pop_codes == pop_i, drop = FALSE]
+      samples_j <- geno_mat[, pop_codes == pop_j, drop = FALSE]
 
-      # Vectorized heterozygosity calculations
-      Hs_i <- mean(2 * freq_i * (1 - freq_i), na.rm = TRUE)
-      Hs_j <- mean(2 * freq_j * (1 - freq_j), na.rm = TRUE)
+      # Calculate allele frequencies within each population
+      freq_i <- rowMeans(samples_i, na.rm = TRUE) / 2
+      freq_j <- rowMeans(samples_j, na.rm = TRUE) / 2
+      freq_total <- rowMeans(cbind(samples_i, samples_j), na.rm = TRUE) / 2
+
+      # Heterozygosity calculations, with safeguard against negative values
+      Hs_i <- sum(2 * freq_i * (1 - freq_i), na.rm = TRUE)
+      Hs_j <- sum(2 * freq_j * (1 - freq_j), na.rm = TRUE)
       Hs <- (Hs_i + Hs_j) / 2
 
-      Ht <- mean(2 * freq_total * (1 - freq_total), na.rm = TRUE)
+      Ht <- sum(2 * freq_total * (1 - freq_total), na.rm = TRUE)
 
-      # Calculate FST
+      # Calculate FST if Ht is not zero
       fst <- if (Ht > 0) max((Ht - Hs) / Ht, 0) else 0
+
+      # Assign FST value symmetrically
       fst_mat[i, j] <- fst_mat[j, i] <- fst
     }
   }
@@ -233,11 +190,12 @@ calculateFSTMatrixOptimized <- function(geno_mat, pop_codes) {
 #' @param method One of "ibs" or "fst"
 #' @return List containing relatedness matrix and sample information
 computeRelatedness <- function(vcf_data, pop_metadata, method = "ibs") {
+  # Validate inputs
   if (!is(vcf_data, "CollapsedVCF")) {
     stop("vcf_data must be a CollapsedVCF object")
   }
 
-  # Extract and convert genotype data efficiently
+  # Extract and convert genotype data
   gt_data <- extractGenotypeFromCollapsed(vcf_data)
   geno_mat <- convertGTtoNumeric(gt_data)
 
@@ -247,14 +205,14 @@ computeRelatedness <- function(vcf_data, pop_metadata, method = "ibs") {
     stop("No sample names found in VCF data")
   }
 
-  # Match population data efficiently
+  # Match population data
   pop_codes <- pop_metadata$pop[match(samples, pop_metadata$sample)]
 
-  # Calculate relatedness matrix using optimized functions
+  # Calculate relatedness matrix
   relatedness_matrix <- if (method == "ibs") {
-    calculateIBSMatrixOptimized(geno_mat)
+    calculateIBSMatrix(geno_mat)
   } else if (method == "fst") {
-    calculateFSTMatrixOptimized(geno_mat, pop_codes)
+    calculateFSTMatrix(geno_mat, pop_codes)
   } else {
     stop("Unsupported relatedness method")
   }
@@ -264,6 +222,7 @@ computeRelatedness <- function(vcf_data, pop_metadata, method = "ibs") {
     samples = samples
   ))
 }
+
 #' Analyze population structure
 #' @param vcf_data A CollapsedVCF object
 #' @param pop_metadata Population metadata data.frame
