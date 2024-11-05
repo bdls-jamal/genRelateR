@@ -234,7 +234,7 @@ computeRelatedness <- function(vcf_data, pop_metadata, method = "ibs") {
 #' @return List containing analysis results
 analyzePopulationStructure <- function(vcf_data, pop_metadata,
                                        method = "pca", n_components = 2,
-                                       min_var = 1e-10) {
+                                       min_var = 0.01) {
   # Extract and convert genotype data
   gt_data <- extractGenotypeFromCollapsed(vcf_data)
   geno_mat <- convertGTtoNumeric(gt_data)
@@ -249,9 +249,14 @@ analyzePopulationStructure <- function(vcf_data, pop_metadata,
   filtered_geno <- geno_mat[, samples, drop = FALSE]
 
   # Filter variants by variance
-  filtered_geno <- filterVariantsByVariance(filtered_geno, min_var)
+  filtered_geno <- filterVariantsByVariance(filtered_geno, 0.01)
+  filtered_geno <- filtered_geno[!rowSums(is.na(filtered_geno)),]
 
-  filtered_pop <- pop_metadata$pop[match(samples, pop_metadata$sample)]
+  # Append pop code and name mapping to metadata
+  pop_names_df <- read.table("data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
+  pop_metadata$population <- pop_names_df$Name[match(pop_metadata$pop, pop_names_df$Code)]
+
+  filtered_pop <- pop_metadata$population[match(samples, pop_metadata$sample)]
 
   if (method == "pca") {
     # Handle potential scaling issues
@@ -288,23 +293,6 @@ analyzePopulationStructure <- function(vcf_data, pop_metadata,
       percent_var = percent_var,
       samples = samples
     ))
-
-  } else if (method == "admixture") {
-    # Perform MDS
-    dist_mat <- dist(t(filtered_geno))
-    mds_result <- cmdscale(dist_mat, k = n_components)
-
-    plot_data <- data.frame(
-      MDS1 = mds_result[,1],
-      MDS2 = mds_result[,2],
-      Population = filtered_pop
-    )
-
-    return(list(
-      plot_data = plot_data,
-      samples = samples
-    ))
   }
-
   stop("Unsupported population structure analysis method")
 }

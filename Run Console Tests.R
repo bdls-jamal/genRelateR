@@ -16,15 +16,13 @@ genetic_data <- loadGeneticData(vcf_file)
 pop_metadata <- "data/population_metadata.txt"
 
 # Filter populations
-filtered_data <- filterPopulation(genetic_data, pop_metadata, population = c("CEU", "YRI"))
+filtered_data <- filterPopulation(genetic_data, pop_metadata, population = c("CEU", "YRI", "GBR"))
 
 # Compute relatedness
 relatedness_results <- computeRelatedness(
   filtered_data$vcf_data,
   filtered_data$pop_metadata
 )
-
-pop_codes <- read.table("data/population_codes.txt", header = FALSE, col.names = c("Code", "Population"))
 
 # Perform population structure analysis
 pca_results <- analyzePopulationStructure(
@@ -36,8 +34,7 @@ pca_results <- analyzePopulationStructure(
 # Create visualizations
 # PCA plot
 pca_plot <- plotPopulationPca(
-  pca_results,
-  pop_codes,
+  analysis_results = pca_results,
   title = "Population Structure PCA",
   ellipses = TRUE
 )
@@ -46,7 +43,6 @@ print(pca_plot)
 # Relatedness heatmap
 heatmap_plot <- plotRelatednessHeatmap(
   relatedness_results,
-  pop_codes,
   title = "Population Relatedness"
 )
 print(heatmap_plot)

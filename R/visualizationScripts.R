@@ -12,14 +12,11 @@
 #' @export
 plotPopulationPca <- function(analysis_results, title = NULL,
                               ellipses = TRUE, labels = FALSE) {
-  if (!all(c("plot_data", "percent_var") %in% names(analysis_results))) {
-    stop("Input must be results from analyzePopulationStructure() with method='pca'")
-  }
 
-  # Create base plot
+  # Basic plot without any potential problematic elements
   p <- ggplot(analysis_results$plot_data,
               aes(x = PC1, y = PC2, color = Population)) +
-    geom_point(alpha = 0.7) +
+    geom_point(alpha = 0.7, position = position_jitter(width = 0.1, height = 0.1)) +
     scale_color_viridis_d() +
     theme_bw() +
     labs(
@@ -30,13 +27,7 @@ plotPopulationPca <- function(analysis_results, title = NULL,
 
   # Add confidence ellipses if requested
   if (ellipses) {
-    p <- p + stat_ellipse(level = 0.95, alpha = 0.2)
-  }
-
-  # Add sample labels if requested
-  if (labels) {
-    p <- p + geom_text_repel(aes(label = rownames(analysis_results$plot_data)),
-                             size = 3, max.overlaps = 20)
+    p <- p + stat_ellipse(level = 0.95, alpha = 0.5)
   }
 
   return(p)
