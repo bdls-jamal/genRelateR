@@ -8,8 +8,25 @@
 #' @param ellipses Logical indicating whether to draw confidence ellipses (default: TRUE)
 #' @param labels Logical indicating whether to show sample labels (default: FALSE)
 #' @return ggplot object
-#' @import ggplot2 ggrepel
+#' @examples
+#' # Grab pca_results from previous analysis functions
+#' pca_results <- genRelateR::analyzePopulationStructure(
+#'  filtered_data$vcf_data,
+#'  filtered_data$pop_metadata,
+#'  method = "pca"
+#' )
+#'
+#' pca_plot <- genRelateR::plotPopulationPca(
+#'   analysis_results = pca_results,
+#'   filtered_data$pop_metadata,
+#'   title = "Population Structure PCA",
+#'   ellipses = TRUE,
+#'   super_pop = TRUE
+#'   )
+#' print(pca_plot)
+#'
 #' @export
+#' @import ggplot2 ggrepel
 plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, ellipses = TRUE, super_pop = FALSE) {
   # Convert row names to a column in analysis_results$plot_data for merging
   analysis_results$plot_data <- data.frame(
@@ -71,58 +88,33 @@ plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, elli
 
   return(p)
 }
-#' Plot Relatedness Heatmap
-#'
-#' Creates a heatmap visualization of genetic relatedness between populations
-#'
-#' @param relatedness_results Results from computeRelatedness()
-#' @param pop_metadata Population metadata dataframe
-#' @param cluster Logical indicating whether to cluster populations (default: TRUE)
-#' @param title Plot title (optional)
-#' @return ggplot object
-#' @import ggplot2 reshape2
-#' @export
-plotRelatednessHeatmap <- function(relatedness_results, pop_metadata,
-                                   cluster = TRUE, title = NULL) {
-  if (!is.matrix(relatedness_results$relatedness_matrix)) {
-    stop("Input must contain a relatedness matrix")
-  }
-
-  # Melt the matrix for ggplot
-  rel_melted <- reshape2::melt(relatedness_results$relatedness_matrix)
-  names(rel_melted) <- c("Pop1", "Pop2", "Relatedness")
-
-  # Create heatmap
-  p <- ggplot(rel_melted, aes(x = Pop1, y = Pop2, fill = Relatedness)) +
-    geom_tile() +
-    scale_fill_viridis_c() +
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      panel.grid = element_blank()
-    ) +
-    labs(title = title)
-
-  if (cluster) {
-    # Perform hierarchical clustering
-    hc <- hclust(dist(relatedness_results$relatedness_matrix))
-    pop_order <- relatedness_results$relatedness_matrix[hc$order, hc$order]
-    p <- p + scale_x_discrete(limits = rownames(pop_order)) +
-      scale_y_discrete(limits = rownames(pop_order))
-  }
-
-  return(p)
-}
 
 #' Plot Ancestry Map
 #'
 #' Creates a map visualization of genetic ancestry components across geographic regions
+#'
 #' @param analysis_results Analysis results from population structure analysis
 #' @param pop_metadata Population metadata with geographic information
 #' @param map_data Optional pre-loaded map data
-#' @param title Plot title
+#' @param title Plot title (optional)
 #' @param individual Boolean to plot individual populations vs super populations
 #' @return Either a ggplot object or plotly object depending on interactive parameter
+#' @examples
+#' # Grab pca_results from previous analysis functions
+#' pca_results <- genRelateR::analyzePopulationStructure(
+#'  filtered_data$vcf_data,
+#'  filtered_data$pop_metadata,
+#'  method = "pca"
+#' )
+#'
+#' ancestry_map <- genRelateR::plotAncestryMap(
+#'  pca_results,
+#'  filtered_data$pop_metadata,
+#'  title = "Global Population Distribution"
+#' )
+#' print(ancestry_map)
+#' @export
+#' @import ggplot2 maps
 plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
                             title = NULL, individual = FALSE) {
   # Validate inputs
@@ -194,69 +186,6 @@ plotAncestryMap <- function(analysis_results, pop_metadata, map_data = NULL,
       panel.grid.minor = element_line(color = "gray95"),
       aspect.ratio = 0.5
     )
-
-  return(p)
-}
-#' Plot Migration Paths
-#'
-#' Visualizes inferred migration paths between populations based on genetic similarity
-#'
-#' @param relatedness_results Results from computeRelatedness()
-#' @param pop_metadata Population metadata including geographic coordinates
-#' @param threshold Minimum relatedness threshold for drawing paths (default: 0.1)
-#' @param title Plot title (optional)
-#' @return ggplot object
-#' @import ggplot2 sf igraph
-#' @export
-plotMigrationPaths <- function(relatedness_results, pop_metadata,
-                               threshold = 0.1, title = NULL) {
-  # Validate inputs
-  if (!all(c("Longitude", "Latitude") %in% colnames(pop_metadata))) {
-    stop("Population metadata must include Longitude and Latitude columns")
-  }
-
-  # Create edges based on relatedness threshold
-  rel_mat <- relatedness_results$relatedness_matrix
-  edges <- which(rel_mat > threshold & upper.tri(rel_mat), arr.ind = TRUE)
-
-  if (nrow(edges) == 0) {
-    stop("No connections found above the threshold")
-  }
-
-  # Create edge data frame
-  edge_data <- data.frame(
-    Pop1 = rownames(rel_mat)[edges[,1]],
-    Pop2 = colnames(rel_mat)[edges[,2]],
-    weight = rel_mat[edges]
-  )
-
-  # Get geographic coordinates
-  coords <- merge(edge_data, pop_metadata[, c("Population", "Longitude", "Latitude")],
-                  by.x = "Pop1", by.y = "Population")
-  coords <- merge(coords, pop_metadata[, c("Population", "Longitude", "Latitude")],
-                  by.x = "Pop2", by.y = "Population", suffixes = c(".1", ".2"))
-
-  # Create base world map
-  world <- map_data("world")
-
-  # Create migration path plot
-  p <- ggplot() +
-    geom_map(data = world, map = world,
-             aes(long, lat, map_id = region),
-             color = "gray70", fill = "gray90", linewidth = 0.2) +
-    geom_curve(data = coords,
-               aes(x = Longitude.1, y = Latitude.1,
-                   xend = Longitude.2, yend = Latitude.2,
-                   alpha = weight),
-               curvature = 0.2, color = "red") +
-    geom_point(data = pop_metadata,
-               aes(x = Longitude, y = Latitude, color = Population),
-               size = 3) +
-    scale_color_viridis_d() +
-    scale_alpha_continuous(range = c(0.2, 0.8)) +
-    theme_minimal() +
-    labs(title = title) +
-    coord_fixed(1.3)
 
   return(p)
 }

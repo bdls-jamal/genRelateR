@@ -26,7 +26,7 @@ test_that("loadGeneticData works with 1000 Genomes Project data", {
   )
 
   # Test loading specific region
-  chr1_region <- GRanges(
+  chr1_region <- GenomicRanges::GRanges(
     seqnames = "1",
     ranges = IRanges(start = 20000000, end = 20001000)
   )
@@ -68,7 +68,7 @@ setup_test_data <- function() {
   )
 
   # Load a small region for testing
-  chr1_region <- GRanges(
+  chr1_region <- GenomicRanges::GRanges(
     seqnames = "1",
     ranges = IRanges(start = 20000000, end = 20001000)
   )

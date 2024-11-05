@@ -30,7 +30,7 @@ filterVariantsByVariance <- function(geno_mat, min_var = 1e-10) {
   return(geno_mat[keep_variants, , drop = FALSE])
 }
 
-# Function to extract genotype data from CollapsedVCF
+#' Function to extract genotype data from CollapsedVCF
 #' @param collapsed_vcf Vcf data in the collapsed form
 #' @return Genotype data from a collapsedVCF
 extractGenotypeFromCollapsed <- function(collapsed_vcf) {
@@ -80,12 +80,28 @@ convertGTtoNumeric <- function(gt_data) {
 }
 
 #' Analyze population structure
+#'
+#' A function that runs PCA analysis(can me modified for other analyses).
+#' Output is ready for plotting various plot types.
+#' Warning: When sample size is too small, you may receive the following Warning messages:
+#' 1: In MASS::cov.trob(data[, vars]) : Probable convergence failure, or similar
+#'
 #' @param vcf_data A CollapsedVCF object
 #' @param pop_metadata Population metadata data.frame
 #' @param method One of "pca"
 #' @param n_components Number of components
 #' @param min_var Minimum variance threshold for filtering variants
 #' @return List containing analysis results
+#' @examples
+#' # Grab filtered_data from previous load/filter functions
+#'
+#' pca_results <- genRelateR::analyzePopulationStructure(
+#'  filtered_data$vcf_data,
+#'  filtered_data$pop_metadata,
+#'  method = "pca"
+#' )
+#'
+#' @export
 analyzePopulationStructure <- function(vcf_data, pop_metadata,
                                        method = "pca", n_components = 2,
                                        min_var = 0.01) {

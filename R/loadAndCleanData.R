@@ -5,6 +5,11 @@
 #' If the default region is still too large, please specify a smaller region using the
 #' regions parameter (e.g., GRanges("1", IRanges(1e6, 2e6)) for chromosome 1, 1-2Mb).
 #'
+#' Warning: If you are receiving a tbi file is older than the vcf file error,
+#' Run the following commands to recreate the tbi file:
+#' library(VariantAnnotation)
+#' indexTabix("path/to/vcf.gz/file", format = "vcf")
+#'
 #' @param vcf_path Path to VCF file
 #' @param regions GRanges object specifying regions to load. If NULL, automatically selects
 #'               a default 1Mb region based on the chromosome in the filename.
@@ -12,25 +17,17 @@
 #' @return A VCF object containing the genetic data
 #' @examples
 #' # Example with default region:
-#' vcf_file <- "ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
-#' genetic_data <- loadGeneticData(vcf_file)
+#' vcf_file <- "../data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+#' genetic_data <- genRelateR::loadGeneticData(vcf_file)
 #'
 #' # Example with custom region:
-#' regions <- GRanges("1", IRanges(1e6, 2e6))
-#' genetic_data <- loadGeneticData(vcf_file, regions = regions)
+#' regions <- GenomicRanges::GRanges("1", IRanges(1e6, 2e6))
+#' genetic_data <- genRelateR::loadGeneticData(vcf_file, regions = regions)
 #'
-#' @references
-#' Example:
-#'Akaike, H. (1973). Information theory and an extension of the maximum
-#'likelihood principle. In \emph{Second International Symposium on Information
-#'Theory}, New York, NY, USA, pp. 267–281. Springer Verlag. \href{https://link.springer.com/chapter/10.1007/978-1-4612-1694-0_15}{Link}
 #' @export
-#' @import VariantAnnotation GenomicRanges data.table
-
-
-# Install the package if you haven't already
-# Advise user to run setupPackages.R first
-
+#' @importFrom VariantAnnotation readVcf
+#' @importFrom GenomicRanges GRanges
+#' @importFrom data.table fread
 loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
   # Validate input file
   if (!file.exists(vcf_path)) {
@@ -53,29 +50,29 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 
       # Set default region to first 1Mb of the chromosome
       message(sprintf("No region specified. Loading first 1Mb of %s (position 1-1,000,000)...", chr))
-      regions <- GRanges(chr_num, IRanges(1, 1e6))
+      regions <- GenomicRanges::GRanges(chr_num, IRanges(1, 1e6))
     } else {
       stop("Could not determine chromosome from filename. Please specify a region.")
     }
   }
 
   # Create TabixFile object
-  tbx <- TabixFile(vcf_path)
+  tbx <- VariantAnnotation::TabixFile(vcf_path)
 
   # Set up scanning parameters
   if (!is.null(regions) && !is.null(samples)) {
-    scan_params <- ScanVcfParam(which=regions, samples=samples)
+    scan_params <- VariantAnnotation::ScanVcfParam(which=regions, samples=samples)
   } else if (!is.null(regions)) {
-    scan_params <- ScanVcfParam(which=regions)
+    scan_params <- VariantAnnotation::ScanVcfParam(which=regions)
   } else if (!is.null(samples)) {
-    scan_params <- ScanVcfParam(samples=samples)
+    scan_params <- VariantAnnotation::ScanVcfParam(samples=samples)
   } else {
-    scan_params <- ScanVcfParam()
+    scan_params <- VariantAnnotation::ScanVcfParam()
   }
 
   # Load the VCF file
   message("Loading VCF file using tabix index...")
-  vcf_data <- readVcf(tbx, genome="hg19", param=scan_params)
+  vcf_data <- VariantAnnotation::readVcf(tbx, genome="hg19", param=scan_params)
 
   return(vcf_data)
 }
@@ -90,12 +87,27 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 #' @param population Vector of population codes to include (e.g., c("CEU", "YRI"))
 #' @param super_pop Vector of super-population codes (e.g., c("EUR", "AFR"))
 #' @return Filtered VCF object
+#' @examples
+#' # Load genetic data and metadata
+#' genRelateR::loadGeneticDada(vcf_file)
+#' pop_metadata <- "data/population_metadata.txt"
+#'
+#' # Filter populations
+#' populations <- c(  "CHB", "JPT", "CHS", "CDX", "KHV", "CEU", "TSI", "GBR",
+#' "FIN", "IBS", "YRI", "LWK", "GWD", "MSL", "ESN","ASW", "ACB", "MXL", "PUR",
+#' "CLM", "PEL", "GIH", "PJL", "BEB", "STU", "ITU")
+#'
+#' filtered_data <- genRelateR::filterPopulation(genetic_data, pop_metadata, populations)
+#'
 #' @export
-#' @import VariantAnnotation dplyr readr stringr
+#' @importFrom VariantAnnotation readVcf
+#' @importFrom dplyr filter select
+#' @importFrom readr read_csv
+#' @importFrom stringr str_detect
 filterPopulation <- function(vcf_data, pop_file, population = NULL,
                              super_pop = NULL) {
   # Load population metadata
-  pop_metadata <- read_tsv(pop_file, col_types = cols())
+  pop_metadata <- VariantAnnotation::read_tsv(pop_file, col_types = cols())
   pop_metadata<- pop_metadata[, c(1, 2, 3, 4)]
 
   # Validate input
@@ -108,24 +120,24 @@ filterPopulation <- function(vcf_data, pop_file, population = NULL,
 
   # Filter samples based on population criteria
   selected_samples <- pop_metadata %>%
-    filter(sample %in% vcf_samples)
+    dplyr::filter(sample %in% vcf_samples)
 
   if (!is.null(population)) {
     selected_samples <- selected_samples %>%
-      filter(pop %in% population)
+      dplyr::filter(pop %in% population)
   }
 
   if (!is.null(super_pop)) {
     selected_samples <- selected_samples %>%
-      filter(super_pop %in% super_pop)
+      dplyr::filter(super_pop %in% super_pop)
   }
 
   # Append pop code and name mapping to metadata
-  pop_names_df <- read.table("data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
+  pop_names_df <- VariantAnnotation::read.table("../data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
   pop_metadata$population <- pop_names_df$Name[match(pop_metadata$pop, pop_names_df$Code)]
 
   # Append long and lat of each pop code to metadata
-  pop_long_lat <- read.table("data/population_long_lat.txt", header = TRUE, sep = "\t")
+  pop_long_lat <- VariantAnnotation::read.table("../data/population_long_lat.txt", header = TRUE, sep = "\t")
   pop_metadata$Longitude <- pop_long_lat$Longitude[match(pop_metadata$pop, pop_long_lat$Name)]
   pop_metadata$Latitude <- pop_long_lat$Latitude[match(pop_metadata$pop, pop_long_lat$Name)]
 

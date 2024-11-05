@@ -1,5 +1,6 @@
 ---
-title: "genRelateR_tutorial"
+title: "genRelateR Package Tutorial"
+author: "Kobi Jamal Schmalenberg"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{genRelateR_tutorial}
@@ -14,6 +15,102 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
-library(genRelateR)
+## Introduction
+`genRelateR` genRelateR is a tool for analyzing global human genomic relatedness across populations. It enhances workflows in bioinformatics by providing exploratory analysis tools for genomic data. The package includes the main components: DESCRIPTION, NAMESPACE, man subdirectory and R subdirectory. Additionally, licence, README and subdirectories vignettes, tests, and data are also available. It was written in R Markdown, using the [knitr](https://cran.r-project.org/package=knitr) package for production. See `help(package = "genRelateR")` for further details. 
+
+To download **genRelateR**, use the following commands:
+
+``` r
+require("devtools")
+devtools::install_github("bdls-jamal/genRelateR", build_vignettes = TRUE)
+library("genRelateR")
+```
+To list all sample functions available in the package:
+``` r
+ls("package:genRelateR")
+```
+
+To list all sample datasets available in the package:
+``` r
+data(package = "genRelateR")
+```
+You may add more datasets from https://www.internationalgenome.org/data/
+
+## Initialization and Environment Setup
+```{r setup, include = FALSE}
+library(genRelateR) # Load the package
+```
+Run the file: R/setupPackages.R, to install and load necessary packages.
+
+Ensure that lines 131 and 135 in loadAndCleanData.R show the correct file path
+to population code and long/latitude information text files.
+
+## Running the functions
+```r 
+# Load genetic data from compressed vcf file(i.e. data from 1000 genomes project)
+# Ensure this data has an associated tbi file in the same folder, or generate it using Tabix
+vcf_file <- "data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+
+# Define a region(range) for analysis(required for very large data files)
+chr1_region <- GenomicRanges::GRanges(
+  seqnames = "1",
+  ranges = IRanges(start = 20000000, end = 20001000)
+)
+
+# Call loadGeneticData function with specified region and vcf file
+genetic_data <- genRelateR::loadGeneticData(vcf_file, regions = chr1_region)
+
+# Create population metadata object from metadata file
+# File is provided for 1000 genome project use, for other data you must use with your own data
+pop_metadata <- "data/population_metadata.txt"
+
+# Choose populations to filter by(all are selected in this example)
+populations <- c(
+  "CHB", "JPT", "CHS", "CDX", "KHV",
+  "CEU", "TSI", "GBR", "FIN", "IBS",
+  "YRI", "LWK", "GWD", "MSL", "ESN",
+  "ASW", "ACB", "MXL", "PUR", "CLM",
+  "PEL", "GIH", "PJL", "BEB", "STU", "ITU"
+)
+
+# Call filterPopulation with loaded data, metadata, and specified populations
+filtered_data <- genRelateR::filterPopulation(genetic_data, pop_metadata, populations)
+
+# Perform population structure analysis by calling analyzePopulationStructure
+pca_results <- genRelateR::analyzePopulationStructure(
+  filtered_data$vcf_data,
+  filtered_data$pop_metadata,
+  method = "pca"
+)
+
+# Create PCA data cluster visualization
+# Call plotPopulationPca then print to view
+pca_plot <- genRelateR::plotPopulationPca(
+  analysis_results = pca_results,
+  filtered_data$pop_metadata,
+  title = "Population Structure PCA",
+  ellipses = TRUE,
+  super_pop = TRUE
+)
+print(pca_plot)
+
+# Create PCA data map visualization
+# Call plotAncestryMap then print to view
+ancestry_map <- genRelateR::plotAncestryMap(
+  pca_results,
+  filtered_data$pop_metadata,
+  title = "Global Population Distribution"
+)
+print(ancestry_map)
+```
+
+## Package References
+
+Schmalenberg, K. (2024) genRelateR: R Package Development for BCB410H. Unpublished. https://github.com/bdls-jamal/genRelateR
+
+## Other References
+
+----
+```{r}
+sessionInfo()
 ```
