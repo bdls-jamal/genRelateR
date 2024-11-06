@@ -147,8 +147,9 @@ download.file(url = pop_metadata_url, destfile = pop_metadata_dest, mode = "wb")
 ```
 ### Function Calling
 ``` r
-Navigate to R/setupPackages.R and run this entire file to install and load necessary packages
-You may download the necessary files(vcf.gz/tbi files and metadata.txt file) directly from the github repository or from the 1000 genomes project.
+Run genRelateR::setupGeneticPackages() to install and load necessary packages
+
+You may download the necessary txt files directly from the github repository or from the 1000 genomes project along with the vcf.gz/tbi files from the project.
 
 # Load genetic data from compressed vcf file(i.e. data from 1000 genomes project)
 # Ensure this data has an associated tbi file in the same folder, or generate it using Tabix
