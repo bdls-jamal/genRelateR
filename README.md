@@ -58,6 +58,11 @@ other files from the project later.
 Refer to package vignettes for more details. An overview of the package
 is illustrated below.
 
+<figure>
+<img src="vignettes/R%20Image.png" alt="Overview of Functions Output" />
+<figcaption aria-hidden="true">Overview of Functions Output</figcaption>
+</figure>
+
 ## Contributions
 
 The author of this package is Kobi Jamal Schmalenberg. The author wrote
