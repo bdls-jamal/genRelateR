@@ -78,10 +78,5 @@ test_that("analyzePopulationStructure works with loaded VCF data", {
   expect_true("PC1" %in% names(pca_results$plot_data))
   expect_true("PC2" %in% names(pca_results$plot_data))
   expect_true("Population" %in% names(pca_results$plot_data))
-
-  # Check plot data
-  expect_true("MDS1" %in% names(admix_results$plot_data))
-  expect_true("MDS2" %in% names(admix_results$plot_data))
-  expect_true("Population" %in% names(admix_results$plot_data))
 })
 

@@ -60,10 +60,9 @@ test_that("loadGeneticData works with 1000 Genomes Project data", {
 setup_test_data <- function() {
   vcf_path <- "../../data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
   pop_file <- "../../data/population_metadata.txt"
-  rel_file <- "../../data/20140625_related_individuals.txt"
 
   skip_if_not(
-    file.exists(vcf_path) && file.exists(pop_file) && file.exists(rel_file),
+    file.exists(vcf_path) && file.exists(pop_file),
     "Skip test: Required test files not available"
   )
 
@@ -77,7 +76,7 @@ setup_test_data <- function() {
     loadGeneticData(vcf_path, regions = chr1_region)
   )
 
-  return(list(vcf_data = vcf_data, pop_file = pop_file, rel_file = rel_file))
+  return(list(vcf_data = vcf_data, pop_file = pop_file))
 }
 
 test_that("filterPopulation works with 1000 Genomes Project data", {
@@ -87,7 +86,6 @@ test_that("filterPopulation works with 1000 Genomes Project data", {
   filtered_vcf <- filterPopulation(
     test_data$vcf_data,
     test_data$pop_file,
-    test_data$rel_file,
     population = c("CEU", "YRI")
   )
 

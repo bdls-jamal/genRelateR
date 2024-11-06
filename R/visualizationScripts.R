@@ -69,12 +69,12 @@ plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, elli
     ) +
     theme(
       legend.position = "right",
-      legend.text = element_text(linewidth = 8),
-      legend.title = element_text(linewidth = 10, face = "bold"),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 10, face = "bold"),
       legend.key.size = unit(1, "lines"),
       panel.grid.major = element_line(color = "gray90"),
       panel.grid.minor = element_line(color = "gray95"),
-      plot.title = element_text(face = "bold", linewidth = 14),
+      plot.title = element_text(face = "bold", size = 14),
       axis.title = element_text(face = "bold")
     )
 

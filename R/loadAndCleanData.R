@@ -17,7 +17,7 @@
 #' @return A VCF object containing the genetic data
 #' @examples
 #' # Example with default region:
-#' vcf_file <- "../data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+#' vcf_file <- "../inst/ext/data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
 #' genetic_data <- genRelateR::loadGeneticData(vcf_file)
 #'
 #' # Example with custom region:
@@ -57,7 +57,7 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
   }
 
   # Create TabixFile object
-  tbx <- VariantAnnotation::TabixFile(vcf_path)
+  tbx <- TabixFile(vcf_path)
 
   # Set up scanning parameters
   if (!is.null(regions) && !is.null(samples)) {
@@ -107,7 +107,7 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 filterPopulation <- function(vcf_data, pop_file, population = NULL,
                              super_pop = NULL) {
   # Load population metadata
-  pop_metadata <- VariantAnnotation::read_tsv(pop_file, col_types = cols())
+  pop_metadata <- read_tsv(pop_file, col_types = cols())
   pop_metadata<- pop_metadata[, c(1, 2, 3, 4)]
 
   # Validate input
@@ -133,11 +133,19 @@ filterPopulation <- function(vcf_data, pop_file, population = NULL,
   }
 
   # Append pop code and name mapping to metadata
-  pop_names_df <- VariantAnnotation::read.table("../data/population_codes.txt", header = FALSE, col.names = c("Code", "Name"))
+  pop_names_df <- read.table(
+    system.file("extdata", "population_codes.txt", package = "genRelateR"),
+    header = FALSE,
+    col.names = c("Code", "Name")
+  )
   pop_metadata$population <- pop_names_df$Name[match(pop_metadata$pop, pop_names_df$Code)]
 
-  # Append long and lat of each pop code to metadata
-  pop_long_lat <- VariantAnnotation::read.table("../data/population_long_lat.txt", header = TRUE, sep = "\t")
+  # Access population longitude and latitude
+  pop_long_lat <- read.table(
+    system.file("extdata", "population_long_lat.txt", package = "genRelateR"),
+    header = TRUE,
+    sep = "\t"
+  )
   pop_metadata$Longitude <- pop_long_lat$Longitude[match(pop_metadata$pop, pop_long_lat$Name)]
   pop_metadata$Latitude <- pop_long_lat$Latitude[match(pop_metadata$pop, pop_long_lat$Name)]
 

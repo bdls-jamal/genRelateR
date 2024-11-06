@@ -144,10 +144,12 @@ issues](https://github.com/bdls-jamal/genRelateR/issues).
 
 ``` r
 Navigate to R/setupPackages.R and run this entire file to install and load necessary packages
+You may download the necessary files(vcf.gz/tbi files and metadata.txt file) directly from the github repository or from the 1000 genomes project.
 
 # Load genetic data from compressed vcf file(i.e. data from 1000 genomes project)
 # Ensure this data has an associated tbi file in the same folder, or generate it using Tabix
-vcf_file <- "data/vcf/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+# Example: vcf_file <- "inst/extdata/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+vcf_file <- "path/to/your/vcf.gz/data"
 
 # Define a region(range) for analysis(required for very large data files)
 chr1_region <- GRanges(
@@ -160,7 +162,8 @@ genetic_data <- genRelateR::loadGeneticData(vcf_file, regions = chr1_region)
 
 # Create population metadata object from metadata file
 # File is provided for 1000 genome project use, for other data you must use with your own data
-pop_metadata <- "data/population_metadata.txt"
+# Example: pop_metadata <- "inst/extdata/population_metadata.txt"
+pop_metadata <- "path/to/your/metadata.txt/file"
 
 # Choose populations to filter by(all are selected in this example)
 populations <- c(
