@@ -142,6 +142,34 @@ issues](https://github.com/bdls-jamal/genRelateR/issues).
 
 ## Example Usage
 
+### Downloading VCF Data
+
+``` r
+# Data in example is from the 1000 genomes project. This package is for the project and may not work as intended with other data that does not have the same format as the project.
+# Define the base FTP URL(you may choose a different release)
+base_url <- "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/"
+
+# Specify the filenames for the VCF and .tbi files(example only below)
+vcf_file <- "ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+tbi_file <- paste0(vcf_file, ".tbi")
+
+# Specify the destination folder (create it if it doesn’t exist)
+dest_folder <- "data/vcf_files"
+if (!dir.exists(dest_folder)) {
+  dir.create(dest_folder, recursive = TRUE)
+}
+
+# Define the full destination paths
+vcf_dest <- file.path(dest_folder, vcf_file)
+tbi_dest <- file.path(dest_folder, tbi_file)
+
+# Download the VCF and .tbi files
+download.file(url = paste0(base_url, vcf_file), destfile = vcf_dest, mode = "wb")
+download.file(url = paste0(base_url, tbi_file), destfile = tbi_dest, mode = "wb")
+```
+
+### Function Calling
+
 ``` r
 Navigate to R/setupPackages.R and run this entire file to install and load necessary packages
 You may download the necessary files(vcf.gz/tbi files and metadata.txt file) directly from the github repository or from the 1000 genomes project.
