@@ -166,6 +166,21 @@ tbi_dest <- file.path(dest_folder, tbi_file)
 # Download the VCF and .tbi files
 download.file(url = paste0(base_url, vcf_file), destfile = vcf_dest, mode = "wb")
 download.file(url = paste0(base_url, tbi_file), destfile = tbi_dest, mode = "wb")
+
+# Download population metadata files, or grab from github repo
+pop_codes_url <- "https://raw.githubusercontent.com/bdls-jamal/genRelateR/main/inst/extdata/population_codes.txt"
+pop_long_lat_url <- "https://raw.githubusercontent.com/bdls-jamal/genRelateR/main/inst/extdata/population_long_lat.txt"
+pop_metadata_url <- "https://raw.githubusercontent.com/bdls-jamal/genRelateR/main/inst/extdata/population_metadata.txt"
+
+dest_folder <- "data"
+
+pop_codes_dest <- file.path(dest_folder, "population_codes.txt")
+pop_long_lat_dest <- file.path(dest_folder, "population_long_lat.txt")
+pop_metadata_dest <- file.path(dest_folder, "population_metadata.txt")
+
+download.file(url = pop_codes_url, destfile = pop_codes_dest, mode = "wb")
+download.file(url = pop_long_lat_url, destfile = pop_long_lat_dest, mode = "wb")
+download.file(url = pop_metadata_url, destfile = pop_metadata_dest, mode = "wb")
 ```
 
 ### Function Calling
