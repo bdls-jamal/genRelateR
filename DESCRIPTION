@@ -13,7 +13,7 @@ Imports:
     shiny,
     shinydashboard,
     shinyFiles,
-    DT,run
+    DT,
     data.table,
     ggplot2,
     maps,
