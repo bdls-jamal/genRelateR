@@ -12,7 +12,7 @@ LazyData: true
 Imports:
     shiny,
     shinydashboard,
-    shinyFiles,
+    shinythemes,
     DT,
     data.table,
     ggplot2,
