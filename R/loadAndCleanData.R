@@ -29,15 +29,35 @@
 #' @importFrom GenomicRanges GRanges
 #' @importFrom data.table fread
 loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
-  # Validate input file
+  # Validate input file path
+  vcf_path <- normalizePath(vcf_path, mustWork = TRUE)
+
+  # Check for tabix index
+  tabix_path <- paste0(vcf_path, ".tbi")
+
+  # Debug print statements (you can remove these in production)
+  message("VCF Path: ", vcf_path)
+  message("Tabix Path: ", tabix_path)
+
+  # Enhanced file existence checks
   if (!file.exists(vcf_path)) {
     stop("VCF file does not exist: ", vcf_path)
   }
 
-  # Check for tabix index
-  tabix_path <- paste0(vcf_path, ".tbi")
   if (!file.exists(tabix_path)) {
-    stop("Tabix index (.tbi) not found. Please ensure the VCF file is properly indexed.")
+    # Additional check for alternative tabix index naming
+    alternative_tabix_path <- file.path(dirname(vcf_path),
+                                        paste0(basename(vcf_path), ".tbi"))
+
+    if (file.exists(alternative_tabix_path)) {
+      tabix_path <- alternative_tabix_path
+    } else {
+      stop("Tabix index (.tbi) not found.
+            Checked paths: \n",
+           tabix_path, "\n",
+           alternative_tabix_path, "\n",
+           "Please ensure the VCF file is properly indexed.")
+    }
   }
 
   # If no region specified, try to determine chromosome from filename and set default region

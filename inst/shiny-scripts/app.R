@@ -1,69 +1,82 @@
-# Load required libraries
 library(shiny)
 library(shinydashboard)
-library(shinyFiles)
-library(DT)
-library(plotly)
+library(shinyjs)
 library(genRelateR)
+library(VariantAnnotation)
+library(GenomicRanges)
+library(Rsamtools)
 
-# UI Definition
+# UI
 ui <- dashboardPage(
-  # Dashboard Header
-  dashboardHeader(title = "genRelateR: Genomic Relatedness Explorer"),
+  dashboardHeader(title = "Genomic Data Analyzer"),
 
-  # Dashboard Sidebar
   dashboardSidebar(
     sidebarMenu(
       menuItem("Data Upload", tabName = "upload", icon = icon("upload")),
-      menuItem("Population Selection", tabName = "population", icon = icon("users")),
-      menuItem("Analysis", tabName = "analysis", icon = icon("chart-bar")),
-      menuItem("Visualization", tabName = "visualization", icon = icon("image"))
+      menuItem("Population Selection", tabName = "populations", icon = icon("users")),
+      menuItem("Analysis", tabName = "analysis", icon = icon("chart-bar"))
     )
   ),
 
-  # Dashboard Body
   dashboardBody(
+    shinyjs::useShinyjs(),
+    tags$head(
+      tags$style(HTML("
+        .shiny-input-container {
+          max-width: 100%;
+        }
+        .large-file-warning {
+          color: orange;
+          font-weight: bold;
+        }
+      "))
+    ),
     tabItems(
       # Data Upload Tab
       tabItem(tabName = "upload",
               fluidRow(
                 box(
-                  title = "Upload Genetic Data", status = "primary", solidHeader = TRUE,
+                  title = "VCF File Upload", status = "primary", solidHeader = TRUE, width = 12,
                   fileInput("vcf_file", "Upload VCF File",
-                            accept = c(".vcf", ".vcf.gz")),
-                  helpText("Supported file types: .vcf, .vcf.gz")
+                            accept = c(".vcf", ".vcf.gz"),
+                            multiple = FALSE),
+                  tags$div(
+                    class = "large-file-warning",
+                    "Note: For very large files, use region-based processing."
+                  )
                 ),
                 box(
-                  title = "Upload Metadata", status = "primary", solidHeader = TRUE,
+                  title = "Metadata Upload", status = "primary", solidHeader = TRUE, width = 12,
                   fileInput("metadata_file", "Upload Population Metadata",
-                            accept = c(".txt")),
-                  helpText("Population metadata file")
-                )
-              ),
-              fluidRow(
-                box(
-                  title = "Demo Data", status = "info", solidHeader = TRUE,
-                  actionButton("use_demo_data", "Use Demo Data")
+                            accept = c(".txt", ".csv"))
                 )
               )
       ),
 
       # Population Selection Tab
-      tabItem(tabName = "population",
+      tabItem(tabName = "populations",
               fluidRow(
                 box(
-                  title = "Population Filter", status = "primary", solidHeader = TRUE, width = 12,
-                  checkboxGroupInput("selected_populations",
-                                     "Select Populations",
+                  title = "Chromosome and Region", status = "primary", solidHeader = TRUE,
+                  selectInput("chromosome", "Select Chromosome",
+                              choices = c(1:22, "X", "Y", "MT"),
+                              selected = "1"),
+                  sliderInput("region_range", "Select Genomic Region",
+                              min = 1, max = 250000000,
+                              value = c(20000000, 20001000), step = 1000000)
+                ),
+                box(
+                  title = "Population Selection", status = "primary", solidHeader = TRUE,
+                  checkboxGroupInput("populations", "Select Populations",
                                      choices = c(
-                                       "East Asian" = "EAS",
-                                       "European" = "EUR",
-                                       "African" = "AFR",
-                                       "American" = "AMR",
-                                       "South Asian" = "SAS"
+                                       "East Asian" = "CHB,JPT,CHS,CDX,KHV",
+                                       "European" = "CEU,TSI,GBR,FIN,IBS",
+                                       "African" = "YRI,LWK,GWD,MSL,ESN,ASW,ACB",
+                                       "American" = "MXL,PUR,CLM,PEL",
+                                       "South Asian" = "GIH,PJL,BEB,STU,ITU"
                                      ),
-                                     selected = NULL,
-                                     inline = TRUE)
+                                     selected = c("CHB,JPT,CHS,CDX,KHV",
+                                                  "CEU,TSI,GBR,FIN,IBS"))
                 )
               )
       ),
@@ -72,24 +85,17 @@ ui <- dashboardPage(
       tabItem(tabName = "analysis",
               fluidRow(
                 box(
-                  title = "Analysis Options", status = "primary", solidHeader = TRUE, width = 12,
+                  title = "Analysis Options", status = "primary", solidHeader = TRUE,
                   selectInput("analysis_type", "Select Analysis",
                               choices = c(
                                 "Population Structure PCA" = "pca",
-                                "Ancestry Distribution Map" = "map",
-                                "Relatedness Dashboard" = "dashboard"
-                              ))
-                )
-              )
-      ),
-
-      # Visualization Tab
-      tabItem(tabName = "visualization",
-              fluidRow(
+                                "Ancestry Map" = "ancestry_map"
+                              )),
+                  actionButton("run_analysis", "Run Analysis", icon = icon("play"))
+                ),
                 box(
-                  title = "Analysis Results", status = "primary",
-                  plotlyOutput("analysis_plot", height = "600px"),
-                  width = 12
+                  title = "Analysis Results", status = "primary", solidHeader = TRUE,
+                  plotOutput("analysis_plot")
                 )
               )
       )
@@ -99,91 +105,150 @@ ui <- dashboardPage(
 
 # Server Logic
 server <- function(input, output, session) {
-  # Reactive values to store data
+  # Increase file upload limit
+  options(shiny.maxRequestSize = 10 * 1024^3)  # 10 GB
+  # Reactive Values
   rv <- reactiveValues(
-    vcf_data = NULL,
-    metadata = NULL,
+    vcf_file = NULL,
+    metadata_file = NULL,
+    genetic_data = NULL,
     filtered_data = NULL,
-    analysis_results = NULL
+    pca_results = NULL
   )
 
-  # Demo Data Handler
-  observeEvent(input$use_demo_data, {
-    # Use package's demo data paths
-    demo_vcf <- system.file("extdata", "demo_vcf", "demo_data.vcf.gz", package = "genRelateR")
-    demo_metadata <- system.file("extdata", "demo_metadata", "demo_metadata.txt", package = "genRelateR")
-
-    # Load demo data
-    rv$vcf_data <- loadGeneticData(demo_vcf)
-    rv$metadata <- read.table(demo_metadata, header = TRUE)
-
-    # Notify user
-    showNotification("Demo data loaded successfully!", type = "message")
+  # Setup Genetic Packages
+  observe({
+    genRelateR::setupGeneticPackages()
   })
 
   # VCF File Upload
   observeEvent(input$vcf_file, {
     req(input$vcf_file)
-    rv$vcf_data <- loadGeneticData(input$vcf_file$datapath)
-    showNotification("VCF file loaded successfully!", type = "message")
+    rv$vcf_file <- input$vcf_file$datapath
+
+    # Check and potentially create tabix index
+    tbi_file <- paste0(rv$vcf_file, ".tbi")
+
+    tryCatch({
+      # Attempt to create tabix index if it doesn't exist
+      if (!file.exists(tbi_file)) {
+        message("Creating tabix index...")
+
+        # Use Rsamtools to create tabix index
+        indexTabix(rv$vcf_file, format = "vcf")
+      }
+
+      # Load the genetic data with the updated function
+      rv$genetic_data <- genRelateR::loadGeneticData(
+        rv$vcf_file,
+        regions = GenomicRanges::GRanges(seqnames = "1", ranges = IRanges(1, 1e6))
+      )
+
+    }, error = function(e) {
+      showNotification(
+        paste("Error processing VCF file:", e$message),
+        type = "error",
+        duration = 10
+      )
+      rv$genetic_data <- NULL
+    })
   })
 
   # Metadata File Upload
   observeEvent(input$metadata_file, {
     req(input$metadata_file)
-    rv$metadata <- read.table(input$metadata_file$datapath, header = TRUE)
-    showNotification("Metadata file loaded successfully!", type = "message")
+    rv$metadata_file <- input$metadata_file$datapath
   })
 
-  # Population Filtering
+  # Load Genetic Data
   observe({
-    req(rv$vcf_data, rv$metadata, input$selected_populations)
-    rv$filtered_data <- filterPopulation(
-      rv$vcf_data,
-      rv$metadata,
-      populations = input$selected_populations
+    req(rv$vcf_file, input$chromosome, input$region_range)
+
+    # Create GRanges object for region
+    region <- GRanges(
+      seqnames = as.character(input$chromosome),
+      ranges = IRanges(
+        start = input$region_range[1],
+        end = input$region_range[2]
+      )
     )
+
+    # Load Genetic Data
+    rv$genetic_data <- tryCatch({
+      genRelateR::loadGeneticData(rv$vcf_file, regions = region)
+    }, error = function(e) {
+      showNotification(
+        paste("Error loading genetic data:", e$message),
+        type = "error"
+      )
+      NULL
+    })
   })
 
-  # Analysis Execution
+  # Filter Populations
   observe({
-    req(rv$filtered_data, input$analysis_type)
+    req(rv$genetic_data, rv$metadata_file, input$populations)
 
-    rv$analysis_results <- switch(input$analysis_type,
-                                  "pca" = analyzePopulationStructure(
-                                    rv$filtered_data$vcf_data,
-                                    rv$filtered_data$pop_metadata,
-                                    method = "pca"
-                                  ),
-                                  "map" = plotAncestryMap(
-                                    rv$vcf_data,
-                                    rv$metadata
-                                  ),
-                                  "dashboard" = createRelatednessDashboard(
-                                    rv$filtered_data$vcf_data,
-                                    rv$filtered_data$pop_metadata
-                                  )
-    )
+    # Flatten and split populations
+    populations <- unlist(strsplit(input$populations, ","))
+
+    # Filter Populations
+    rv$filtered_data <- tryCatch({
+      genRelateR::filterPopulation(
+        rv$genetic_data,
+        rv$metadata_file,
+        populations
+      )
+    }, error = function(e) {
+      showNotification(
+        paste("Error filtering populations:", e$message),
+        type = "error"
+      )
+      NULL
+    })
   })
 
-  # Visualization Output
-  output$analysis_plot <- renderPlotly({
-    req(rv$analysis_results, input$analysis_type)
+  # Run Analysis
+  observeEvent(input$run_analysis, {
+    req(rv$filtered_data)
 
-    plot <- switch(input$analysis_type,
-                   "pca" = plotPopulationPca(
-                     rv$analysis_results,
-                     rv$filtered_data$pop_metadata,
-                     title = "Population Structure PCA"
-                   ),
-                   "map" = rv$analysis_results,  # Already a plot from plotAncestryMap
-                   "dashboard" = rv$analysis_results  # Assuming this returns a plot/dashboard
-    )
+    # Perform Analysis
+    rv$pca_results <- tryCatch({
+      genRelateR::analyzePopulationStructure(
+        rv$filtered_data$vcf_data,
+        rv$filtered_data$pop_metadata,
+        method = "pca"
+      )
+    }, error = function(e) {
+      showNotification(
+        paste("Error in population structure analysis:", e$message),
+        type = "error"
+      )
+      NULL
+    })
+  })
 
-    # Convert ggplot to plotly for interactivity
-    ggplotly(plot)
+  # Plot Results
+  output$analysis_plot <- renderPlot({
+    req(rv$pca_results, rv$filtered_data)
+
+    if (input$analysis_type == "pca") {
+      genRelateR::plotPopulationPca(
+        analysis_results = rv$pca_results,
+        rv$filtered_data$pop_metadata,
+        title = "Population Structure PCA",
+        ellipses = TRUE,
+        super_pop = TRUE
+      )
+    } else if (input$analysis_type == "ancestry_map") {
+      genRelateR::plotAncestryMap(
+        rv$pca_results,
+        rv$filtered_data$pop_metadata,
+        title = "Global Population Distribution"
+      )
+    }
   })
 }
 
-# Run the Shiny App
+# Run the application
 shinyApp(ui, server)
