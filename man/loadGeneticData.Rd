@@ -31,7 +31,7 @@ indexTabix("path/to/vcf.gz/file", format = "vcf")
 }
 \examples{
 # Example with default region:
-vcf_file <- "../data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+vcf_file <- "../inst/ext/data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
 genetic_data <- genRelateR::loadGeneticData(vcf_file)
 
 # Example with custom region:

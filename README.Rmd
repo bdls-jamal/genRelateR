@@ -57,7 +57,7 @@ This package also contains sample 1000 genome project data found in the data fol
 
 Refer to package vignettes for more details. An overview of the package is illustrated below.
 
-![Overview of Functions Output](vignettes/R Image.png)
+![Overview of Functions Output](vignettes/R_Image.png)
 
 ## Contributions
 The author of this package is Kobi Jamal Schmalenberg. The author wrote all of the functions in this package. Generative AI tools were used in all functions for proofing, optimization suggestions, and to help easily replicate styling conventions. 
