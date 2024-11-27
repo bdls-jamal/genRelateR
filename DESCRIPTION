@@ -13,6 +13,8 @@ Imports:
     shiny,
     shinydashboard,
     shinythemes,
+    shinyjs,
+    Rsamtools,
     DT,
     data.table,
     ggplot2,
