@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 
 ## Description
 
-genRelateR is a tool for analyzing global human genomic relatedness across populations. It enhances workflows in bioinformatics by providing exploratory analysis tools for genomic data. The `genRelateR` package was developed using `R version 4.4.1 (2024-06-14 ucrt)`, `Platform: x86_64-w64-mingw32/x64` and `Running under: Windows 10 x64 (build 19045)`.
+genRelateR is a tool for analyzing global human genomic relatedness across populations. The package addresses the need for efficient handling and analysis of large genomic datasets by providing specialized functions that streamline common tasks such as filtering samples, managing metadata, and performing population-based analyses. By integrating with established bioinformatics tools like VariantAnnotation and SummarizedExperiment, this package simplifies the process of working with genomic data in R. It empowers users to conduct exploratory analyses quickly and efficiently, reducing the complexity of data manipulation and making it easier to focus on higher-level analyses such as population structure exploration. The `genRelateR` package was developed using `R version 4.4.1 (2024-06-14 ucrt)`, `Platform: x86_64-w64-mingw32/x64` and `Running under: Windows 10 x64 (build 19045)`.
 
 ## Installation
 
@@ -26,14 +26,15 @@ To install the latest version of the package:
 ``` r
 install.packages("devtools")
 library(devtools)
+options(repos = BiocManager::repositories())
 devtools::install_github("bdls-jamal/genRelateR", build_vignettes = TRUE)
 library(genRelateR) 
 ```
 
-To run the Shiny app(not yet implemented):
+To run the Shiny app:
 
 ``` r
-rungenRelateR() # not yet implemented
+rungenRelateR()
 ```
 
 ## Overview
@@ -51,7 +52,7 @@ browseVignettes("genRelateR")
 3.  ***analyzePopulationStructure()*** performs PCA analysis on population data
 4.  ***plotPopulationPca()*** plots population structure using PCA
 5.  ***plotAncestryMap()*** maps the distribution of genetic ancestry components
-6.  ***createRelatednessDashboard()*** generates an interactive shiny dashboard for exploring relatedness data
+6.  ***rungenRelateR()*** generates an interactive shiny dashboard for exploring relatedness data
 
 This package also contains sample 1000 genome project data found in the data folder. You may use these for initial analyses and then download other files from the project later.
 
@@ -62,9 +63,19 @@ Refer to package vignettes for more details. An overview of the package is illus
 ## Contributions
 The author of this package is Kobi Jamal Schmalenberg. The author wrote all of the functions in this package. Generative AI tools were used in all functions for proofing, optimization suggestions, and to help easily replicate styling conventions. 
 
+This package leverages several widely-used R packages to perform key tasks. Here are the primary contributions:
+
+- VariantAnnotation: Used for reading and processing VCF files.
+- dplyr: Essential for manipulating population metadata, allowing flexible filtering of samples based on various criteria such as population and super-population.
+- SummarizedExperiment: Utilized for handling collapsed VCF data and extracting genotype information efficiently.
+- GenomicRanges: Employed for managing genomic regions, making it easier to specify regions of interest within large genomic datasets.
+
 ## References
 - Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) The New S Language. Wadsworth & Brooks/Cole.
 - Mardia, K. V., J. T. Kent, and J. M. Bibby (1979) Multivariate Analysis, London: Academic Press.
+- R Core Team (2024). _R: A Language and Environment for Statistical
+  Computing_. R Foundation for Statistical Computing, Vienna, Austria.
+  <https://www.R-project.org/>.
 - Susan Fairley, Ernesto Lowy-Gallego, Emily Perry, Paul Flicek, The International Genome Sample Resource (IGSR) collection of open human genomic variation resources, Nucleic Acids Research, Volume 48, Issue D1, 08 January 2020, Pages D941–D947, https://doi.org/10.1093/nar/gkz836
 - The 1000 Genomes Project Consortium. A global reference for human genetic variation. Nature 526, 68–74 (2015). https://doi.org/10.1038/nature15393
 - Venables, W. N. and B. D. Ripley (2002) Modern Applied Statistics with S, Springer-Verlag.

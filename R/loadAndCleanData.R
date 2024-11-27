@@ -14,7 +14,9 @@
 #' @param regions GRanges object specifying regions to load. If NULL, automatically selects
 #'               a default 1Mb region based on the chromosome in the filename.
 #' @param samples Vector of sample IDs to include. If NULL, includes all samples.
+#'
 #' @return A VCF object containing the genetic data
+#'
 #' @examples
 #' # Example with default region:
 #' vcf_file <- "../inst/ext/data/vcf/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
@@ -35,11 +37,7 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
   # Check for tabix index
   tabix_path <- paste0(vcf_path, ".tbi")
 
-  # Debug print statements (you can remove these in production)
-  message("VCF Path: ", vcf_path)
-  message("Tabix Path: ", tabix_path)
-
-  # Enhanced file existence checks
+  # File existence checks
   if (!file.exists(vcf_path)) {
     stop("VCF file does not exist: ", vcf_path)
   }
@@ -91,7 +89,6 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
   }
 
   # Load the VCF file
-  message("Loading VCF file using tabix index...")
   vcf_data <- VariantAnnotation::readVcf(tbx, genome="hg19", param=scan_params)
 
   return(vcf_data)
@@ -106,7 +103,9 @@ loadGeneticData <- function(vcf_path, regions = NULL, samples = NULL) {
 #' @param pop_file Path to population metadata file (tab-delimited with columns: Sample, Population, SuperPop)
 #' @param population Vector of population codes to include (e.g., c("CEU", "YRI"))
 #' @param super_pop Vector of super-population codes (e.g., c("EUR", "AFR"))
-#' @return Filtered VCF object
+#'
+#' @return Filtered VCF object after filtering by various parameters
+#'
 #' @examples
 #' # Load genetic data and metadata
 #' genRelateR::loadGeneticDada(vcf_file)

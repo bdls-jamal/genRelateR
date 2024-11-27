@@ -15,6 +15,7 @@ validate_columns <- function(df, required_cols, df_name) {
 #' Filter variants by variance
 #' @param geno_mat Numeric genotype matrix
 #' @param min_var Minimum variance threshold
+#'
 #' @return Filtered genotype matrix
 filterVariantsByVariance <- function(geno_mat, min_var = 1e-10) {
   # Calculate variance for each variant (row)
@@ -32,6 +33,7 @@ filterVariantsByVariance <- function(geno_mat, min_var = 1e-10) {
 
 #' Function to extract genotype data from CollapsedVCF
 #' @param collapsed_vcf Vcf data in the collapsed form
+#'
 #' @return Genotype data from a collapsedVCF
 extractGenotypeFromCollapsed <- function(collapsed_vcf) {
   if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
@@ -58,6 +60,7 @@ extractGenotypeFromCollapsed <- function(collapsed_vcf) {
 
 #' Function to validate and process genotype data
 #' @param gt_data Genotype data results from extractGenotypeFromCollapsed
+#'
 #' @return Converted genotype data in a matrix
 convertGTtoNumeric <- function(gt_data) {
   # Convert to character matrix once
@@ -81,7 +84,7 @@ convertGTtoNumeric <- function(gt_data) {
 
 #' Analyze population structure
 #'
-#' A function that runs PCA analysis(can me modified for other analyses).
+#' A function that runs Principal Component Analysis or PCA(can me modified for other analyses).
 #' Output is ready for plotting various plot types.
 #' Warning: When sample size is too small, you may receive the following Warning messages:
 #' 1: In MASS::cov.trob(data[, vars]) : Probable convergence failure, or similar
@@ -89,11 +92,23 @@ convertGTtoNumeric <- function(gt_data) {
 #' @param vcf_data A CollapsedVCF object
 #' @param pop_metadata Population metadata data.frame
 #' @param method One of "pca"
-#' @param n_components Number of components
+#' @param n_components A positive integer representing the Number of components that will be used in PCA
 #' @param min_var Minimum variance threshold for filtering variants
-#' @return List containing analysis results
+#'
+#' @return List containing analysis results for use in plotting
+#'
 #' @examples
 #' # Grab filtered_data from previous load/filter functions
+#' # Load genetic data and metadata
+#' genRelateR::loadGeneticDada(vcf_file)
+#' pop_metadata <- "data/population_metadata.txt"
+#'
+#' # Filter populations
+#' populations <- c(  "CHB", "JPT", "CHS", "CDX", "KHV", "CEU", "TSI", "GBR",
+#' "FIN", "IBS", "YRI", "LWK", "GWD", "MSL", "ESN","ASW", "ACB", "MXL", "PUR",
+#' "CLM", "PEL", "GIH", "PJL", "BEB", "STU", "ITU")
+#'
+#' filtered_data <- genRelateR::filterPopulation(genetic_data, pop_metadata, populations)
 #'
 #' pca_results <- genRelateR::analyzePopulationStructure(
 #'  filtered_data$vcf_data,

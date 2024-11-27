@@ -5,13 +5,13 @@
 #'
 #' @return Launches the Shiny application
 #'
-#' @export
-#' @importFrom shiny runApp
-#'
 #' @examples
 #' \dontrun{
 #' rungenRelateR()
 #' }
+#'
+#' @export
+#' @importFrom shiny runApp
 rungenRelateR <- function() {
   # Find the Shiny app directory
   appDir <- system.file("shiny-scripts", package = "genRelateR")

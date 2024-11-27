@@ -6,9 +6,17 @@
 ## Description
 
 genRelateR is a tool for analyzing global human genomic relatedness
-across populations. It enhances workflows in bioinformatics by providing
-exploratory analysis tools for genomic data. The `genRelateR` package
-was developed using `R version 4.4.1 (2024-06-14 ucrt)`,
+across populations. The package addresses the need for efficient
+handling and analysis of large genomic datasets by providing specialized
+functions that streamline common tasks such as filtering samples,
+managing metadata, and performing population-based analyses. By
+integrating with established bioinformatics tools like VariantAnnotation
+and SummarizedExperiment, this package simplifies the process of working
+with genomic data in R. It empowers users to conduct exploratory
+analyses quickly and efficiently, reducing the complexity of data
+manipulation and making it easier to focus on higher-level analyses such
+as population structure exploration. The `genRelateR` package was
+developed using `R version 4.4.1 (2024-06-14 ucrt)`,
 `Platform: x86_64-w64-mingw32/x64` and
 `Running under: Windows 10 x64 (build 19045)`.
 
@@ -19,14 +27,15 @@ To install the latest version of the package:
 ``` r
 install.packages("devtools")
 library(devtools)
+options(repos = BiocManager::repositories())
 devtools::install_github("bdls-jamal/genRelateR", build_vignettes = TRUE)
 library(genRelateR) 
 ```
 
-To run the Shiny app(not yet implemented):
+To run the Shiny app:
 
 ``` r
-rungenRelateR() # not yet implemented
+rungenRelateR()
 ```
 
 ## Overview
@@ -59,7 +68,7 @@ Refer to package vignettes for more details. An overview of the package
 is illustrated below.
 
 <figure>
-<img src="vignettes/R%20Image.png" alt="Overview of Functions Output" />
+<img src="vignettes/R_Image.png" alt="Overview of Functions Output" />
 <figcaption aria-hidden="true">Overview of Functions Output</figcaption>
 </figure>
 
@@ -70,12 +79,27 @@ all of the functions in this package. Generative AI tools were used in
 all functions for proofing, optimization suggestions, and to help easily
 replicate styling conventions.
 
+This package leverages several widely-used R packages to perform key
+tasks. Here are the primary contributions:
+
+- VariantAnnotation: Used for reading and processing VCF files.
+- dplyr: Essential for manipulating population metadata, allowing
+  flexible filtering of samples based on various criteria such as
+  population and super-population.
+- SummarizedExperiment: Utilized for handling collapsed VCF data and
+  extracting genotype information efficiently.
+- GenomicRanges: Employed for managing genomic regions, making it easier
+  to specify regions of interest within large genomic datasets.
+
 ## References
 
 - Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) The New S
   Language. Wadsworth & Brooks/Cole.
 - Mardia, K. V., J. T. Kent, and J. M. Bibby (1979) Multivariate
   Analysis, London: Academic Press.
+- R Core Team (2024). *R: A Language and Environment for Statistical
+  Computing*. R Foundation for Statistical Computing, Vienna, Austria.
+  <https://www.R-project.org/>.
 - Susan Fairley, Ernesto Lowy-Gallego, Emily Perry, Paul Flicek, The
   International Genome Sample Resource (IGSR) collection of open human
   genomic variation resources, Nucleic Acids Research, Volume 48, Issue

@@ -7,8 +7,21 @@
 #' @param title Plot title (optional)
 #' @param ellipses Logical indicating whether to draw confidence ellipses (default: TRUE)
 #' @param labels Logical indicating whether to show sample labels (default: FALSE)
-#' @return ggplot object
+#'
+#' @return ggplot object outlining PCA results
+#'
 #' @examples
+#' # Load genetic data and metadata
+#' genRelateR::loadGeneticDada(vcf_file)
+#' pop_metadata <- "data/population_metadata.txt"
+#'
+#' # Filter populations
+#' populations <- c(  "CHB", "JPT", "CHS", "CDX", "KHV", "CEU", "TSI", "GBR",
+#' "FIN", "IBS", "YRI", "LWK", "GWD", "MSL", "ESN","ASW", "ACB", "MXL", "PUR",
+#' "CLM", "PEL", "GIH", "PJL", "BEB", "STU", "ITU")
+#'
+#' filtered_data <- genRelateR::filterPopulation(genetic_data, pop_metadata, populations)
+#'
 #' # Grab pca_results from previous analysis functions
 #' pca_results <- genRelateR::analyzePopulationStructure(
 #'  filtered_data$vcf_data,
@@ -98,8 +111,22 @@ plotPopulationPca <- function(analysis_results, pop_metadata, title = NULL, elli
 #' @param map_data Optional pre-loaded map data
 #' @param title Plot title (optional)
 #' @param individual Boolean to plot individual populations vs super populations
+#'
 #' @return Either a ggplot object or plotly object depending on interactive parameter
+#'
 #' @examples
+#'
+#' # Load genetic data and metadata
+#' genRelateR::loadGeneticDada(vcf_file)
+#' pop_metadata <- "data/population_metadata.txt"
+#'
+#' # Filter populations
+#' populations <- c(  "CHB", "JPT", "CHS", "CDX", "KHV", "CEU", "TSI", "GBR",
+#' "FIN", "IBS", "YRI", "LWK", "GWD", "MSL", "ESN","ASW", "ACB", "MXL", "PUR",
+#' "CLM", "PEL", "GIH", "PJL", "BEB", "STU", "ITU")
+#'
+#' filtered_data <- genRelateR::filterPopulation(genetic_data, pop_metadata, populations)
+#'
 #' # Grab pca_results from previous analysis functions
 #' pca_results <- genRelateR::analyzePopulationStructure(
 #'  filtered_data$vcf_data,
