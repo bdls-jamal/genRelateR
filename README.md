@@ -38,6 +38,9 @@ To run the Shiny app:
 rungenRelateR()
 ```
 
+Note: Ensure the chromosome selected matches your input file. This
+should be done automatically.
+
 ## Overview
 
 ``` r
@@ -57,8 +60,8 @@ browseVignettes("genRelateR")
 4.  ***plotPopulationPca()*** plots population structure using PCA
 5.  ***plotAncestryMap()*** maps the distribution of genetic ancestry
     components
-6.  ***createRelatednessDashboard()*** generates an interactive shiny
-    dashboard for exploring relatedness data
+6.  ***rungenRelateR()*** generates an interactive shiny dashboard for
+    exploring relatedness data
 
 This package also contains sample 1000 genome project data found in the
 data folder. You may use these for initial analyses and then download

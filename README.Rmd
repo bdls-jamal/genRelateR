@@ -36,6 +36,7 @@ To run the Shiny app:
 ``` r
 rungenRelateR()
 ```
+Note: Ensure the chromosome selected matches your input file. This should be done automatically.
 
 ## Overview
 
