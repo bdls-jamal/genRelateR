@@ -187,9 +187,6 @@ server <- function(input, output, session) {
       # Force the chromosome selection to match the extracted chromosome
       updateSelectInput(session, "chromosome", selected = chromosome_str)
     }
-
-    # Print debug information
-    message("VCF File Path: ", rv$vcf_file)
   })
 
   # Tabix Index File Upload
@@ -197,9 +194,6 @@ server <- function(input, output, session) {
     req(input$tbi_file)
     # Store the full path, ensuring it's the actual file path
     rv$tbi_file <- input$tbi_file$datapath
-
-    # Print debug information
-    message("Tabix Index File Path: ", rv$tbi_file)
   })
 
 
